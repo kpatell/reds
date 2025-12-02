@@ -21,6 +21,8 @@ create table games (
   deck jsonb default '[]'::jsonb,
   discard_pile jsonb default '[]'::jsonb,
   current_turn_player_id uuid references auth.users,
+  turn_phase text default 'draw',
+  drawn_card jsonb,
   
   -- Players Data (JSONB map keyed by user_id)
   -- Structure: { [user_id]: { hand: Card[], is_ready: boolean, has_called_reds: boolean } }

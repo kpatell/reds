@@ -37,6 +37,8 @@ export interface Database {
           deck: Json
           discard_pile: Json
           current_turn_player_id: string | null
+          turn_phase: string
+          drawn_card: Json | null
           players: Json
           last_action_at: string | null
         }
@@ -47,6 +49,8 @@ export interface Database {
           deck?: Json
           discard_pile?: Json
           current_turn_player_id?: string | null
+          turn_phase?: string
+          drawn_card?: Json | null
           players?: Json
           last_action_at?: string | null
         }
@@ -57,6 +61,8 @@ export interface Database {
           deck?: Json
           discard_pile?: Json
           current_turn_player_id?: string | null
+          turn_phase?: string
+          drawn_card?: Json | null
           players?: Json
           last_action_at?: string | null
         }
