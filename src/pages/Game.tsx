@@ -11,8 +11,16 @@ import type { Database, Json } from '@/types/supabase'
 
 export default function Game() {
     const { gameId } = useParams()
-    const { user, loading: authLoading } = useAuth()
+    const { user, signInAnonymously, loading: authLoading } = useAuth()
     const { gameState, loading: gameLoading, error } = useGameState(gameId!)
+
+    // Auto-sign in for guests accessing via link
+    useEffect(() => {
+        if (!authLoading && !user) {
+            console.log('User not authenticated, signing in anonymously...')
+            signInAnonymously().catch(err => console.error('Auto sign-in failed:', err))
+        }
+    }, [authLoading, user, signInAnonymously])
 
     useEffect(() => {
         if (!gameState || !user || !gameId) return
@@ -153,7 +161,15 @@ export default function Game() {
         }
     }
 
-    if (!gameState) return null
+    if (!gameState) {
+        return (
+            <div className="min-h-screen flex items-center justify-center flex-col gap-4">
+                <div className="text-xl font-bold text-[var(--color-text-muted)]">Game not found</div>
+                <div className="text-sm text-[var(--color-text-muted)]">ID: {gameId}</div>
+                <div className="text-xs text-red-400">Debug: User={user ? 'Yes' : 'No'}, AuthLoading={authLoading ? 'Yes' : 'No'}</div>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-[var(--color-background)]">

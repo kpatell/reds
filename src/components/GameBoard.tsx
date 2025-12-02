@@ -14,7 +14,10 @@ interface GameBoardProps {
 export function GameBoard({ gameState, onDraw, onDiscard, onSwap }: GameBoardProps) {
     const { user } = useAuth()
 
-    if (!user) return null
+    if (!user) {
+        console.warn('GameBoard: No user found, rendering null')
+        return null
+    }
 
     const currentPlayer = gameState.players[user.id]
     const opponentId = Object.keys(gameState.players).find(id => id !== user.id)

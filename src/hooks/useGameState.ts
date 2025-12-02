@@ -44,6 +44,7 @@ export function useGameState(gameId: string) {
   }, [gameId])
 
   const fetchGame = async () => {
+    console.log('Fetching game:', gameId)
     try {
       const { data, error } = await supabase
         .from('games')
@@ -51,9 +52,18 @@ export function useGameState(gameId: string) {
         .eq('id', gameId)
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error fetching game:', error)
+        throw error
+      }
+      
+      console.log('Game data fetched:', data)
       if (data) {
-        setGameState(mapRowToGameState(data))
+        const mappedState = mapRowToGameState(data)
+        console.log('Mapped state:', mappedState)
+        setGameState(mappedState)
+      } else {
+        console.warn('No data returned for game:', gameId)
       }
     } catch (err: any) {
       console.error('Error fetching game:', err)
