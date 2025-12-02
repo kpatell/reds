@@ -1,62 +1,66 @@
-# reds
+# Reds: Official Game Rules
 
-Reds Card Game
+**Reds** is a strategic two-player card game where the objective is to minimize the total value of your hand.
 
-# Reds Card Game 🃏
+## 1. Objective
+The goal of the game is to have a lower total card value than your opponent when the game ends. The game ends when a player calls "REDS" or the deck is depleted.
 
-Welcome to Reds, a strategic card game for two players where the objective is to have a lower total card value than your opponent!
+## 2. Setup
+*   **Players:** 2
+*   **Deck:** Standard 54-card deck (including 2 Jokers).
+*   **Initial Deal:**
+    *   Each player is dealt **4 cards**, placed face-down in a 2x2 grid.
+    *   The remaining cards form the **Draw Pile** (face-down).
+    *   The top card of the Draw Pile is flipped to start the **Discard Pile** (face-up).
+*   **Preview Phase:** At the start of the game, each player may privately view the **bottom two cards** of their grid once. After this, cards cannot be looked at again unless a special power is used.
 
-## How to Play 🎮
+## 3. Gameplay Loop
+Players take turns, starting with Player 1. On each turn, a player must perform the following actions in order:
 
-### Objective 🏆
+### A. Draw
+The player must draw one card from either:
+1.  **The Draw Pile** (Face-down)
+2.  **The Discard Pile** (Face-up)
 
-The goal of Reds is to end the game with a lower total card value than your opponent.
+### B. Action
+After drawing, the player must choose **one** of the following actions:
+1.  **Swap:** Exchange the drawn card with one of their face-down cards. The replaced card is placed face-up on the Discard Pile.
+2.  **Discard:** Place the drawn card face-up on the Discard Pile.
+    *   *Note:* If the card was drawn from the Discard Pile, it cannot be immediately discarded (it must be swapped).
 
-### Setup 🛠️
+### C. Power Activation (Optional)
+If a player draws a **Power Card** (7, 8, 9, 10) from the **Draw Pile** and chooses to **discard** it immediately, they may activate its special ability:
+*   **7 (View Self):** Look at one of your own face-down cards.
+*   **8 (View Opponent):** Look at one of your opponent's face-down cards.
+*   **9 (Blind Swap):** Exchange one of your cards with one of your opponent's cards without looking at them.
+*   **10 (View & Swap):** Look at one of your cards and one of your opponent's cards. You may choose to swap them.
 
-1. Each player starts with 4 cards placed face down in front of them in a square formation.
-2. The remaining deck of cards is placed face down in the center of the table.
+### D. Stacking (Real-time Mechanic)
+At any point during the game (even during the opponent's turn), if a card on the Discard Pile matches the rank (e.g., 5 on 5, King on King) of a card in a player's hand, that player may **Stack** it.
+*   **Action:** Quickly place the matching card from your hand onto the Discard Pile.
+*   **Result:** The player now has fewer cards in their hand.
+*   **Penalty:**
+    *   **Incorrect Stack:** If the cards do not match, the player must draw a penalty card.
+    *   **Late Stack:** If another card is played before the stack lands, the stack is invalid.
 
-### Gameplay 🃏
+## 4. Ending the Game
+The game ends in one of two ways:
+1.  **Calling "REDS":** A player may call "REDS" at the start of their turn if they believe they have the lowest score.
+    *   The opponent gets **one final turn**. During this turn, if they draw a Power Card, they **may** use its ability.
+    *   Both players reveal their cards and tally scores.
+2.  **Depleted Deck:** If the Draw Pile runs out, the game ends immediately. Scores are tallied.
 
-1. Player 1 takes the first turn (or the winner of the previous round)
-2. On their turn, a player can draw the top card from the deck or the discard pile.
-3. Players can then choose to:
-   - Swap a card from their hand with the drawn card.
-   - Discard the drawn card.
-   - Use special powers of 7, 8, 9, or 10 cards if they draw from the pile (explained below).
-4. Special powers:
-   - **7:** View any of your cards.
-   - **8:** View any of your opponent's cards.
-   - **9:** Swap one of your cards with a random card from your opponent's hand (blind swap).
-   - **10:** View one of your cards and one of your opponent's cards. Choose to swap them or not.
-5. Stacking: Players can stack their cards on top of matching cards (card value) discarded by their opponent or themselves, reducing their hand size at any point in time. If a player has already stacked a card, someone else cannot stack on top of them. If they try to, they must add a card to their hand without looking at it (so if a player is too slow at stacking their hand and they have 4 cards and someone stacks before them, they must take their card back and take another from the pile having 5 total cards face down in front of them). If a player incorrectly stacks (meaning that the card they are trying to stack doesn't match the card at the top of the discard pile, they must add a card to their hand without looking at it).
-6. Turns alternate between players until one player calls "REDS" when they believe their total card value is lower than their opponent's.
+## 5. Scoring
+Card values are as follows:
+*   **Joker:** 0 points
+*   **Ace:** 1 point
+*   **2 - 10:** Face value (2-10 points)
+*   **Jack:** 11 points
+*   **Queen:** 12 points
+*   **King (Black - ♠️/♣️):** 13 points
+*   **King (Red - ♥️/♦️):** -2 points (The "Red King" is the best card)
 
-### Ending the Game 🏁
-
-1. After "REDS" is called, the opponent takes one more turn.
-2. Players reveal their hands.
-3. If the player who called "REDS" has a lower total card value, they win. Otherwise, their opponent wins.
-
-## Card Values ♠️♥️♦️♣️
-
-- Jokers: 0
-- Ace: 1
-- 2-10: Respective numbers
-- Jack: 11
-- Queen: 12
-- King (Spades/Clubs): 13
-- King (Hearts/Diamonds): -2
-
-## Example Gameplay 🎲
-
-Player 1 draws a 7:
-
-- They discard the 7 and choose to view one of their cards
-
-Player 2 draws a 10:
-
-- They discard the 10
-- They view one of their cards and one of Player 1's cards.
-- They swap the cards if they want to (usually done when it benefits them).
+## 6. Winning a Round
+*   If the player who called "REDS" has a **strictly lower** score than their opponent, they win the round.
+*   If the caller has a **tied or higher** score, their opponent wins the round.
+*   Players track the number of **Rounds Won**. The game continues until a player reaches a set number of wins (e.g., 3 or 5).

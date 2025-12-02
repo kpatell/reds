@@ -1,73 +1,69 @@
-# React + TypeScript + Vite
+# Reds 🃏
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A strategic real-time multiplayer card game built with React, TypeScript, and Supabase.
 
-Currently, two official plugins are available:
+## Overview
+Reds is a web-based implementation of a popular card game (similar to Golf or Cabo). Players compete to lower their hand value through drawing, swapping, and using special power cards. The game features real-time multiplayer interactions, including a unique "Stacking" mechanic that allows out-of-turn plays.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Tech Stack
+*   **Frontend:** React (Vite), TypeScript, TailwindCSS
+*   **State Management:** Zustand (Client), React Query (Server)
+*   **Backend:** Supabase (PostgreSQL, Auth, Realtime)
+*   **Icons:** Lucide React
 
-## React Compiler
+## Features
+*   **Real-time Multiplayer:** Play against opponents instantly using Supabase Realtime.
+*   **Anonymous Auth:** Jump straight into the game without signing up.
+*   **Lobby System:** Create or join games seamlessly.
+*   **Responsive Design:** Optimized for both desktop and mobile play.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting Started
 
-## Expanding the ESLint configuration
+### Prerequisites
+*   Node.js (v18+)
+*   npm or pnpm
+*   Supabase Project
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Installation
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/reds.git
+    cd reds
+    ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+3.  **Environment Setup:**
+    Create a `.env` file based on `.env.example`:
+    ```bash
+    cp .env.example .env
+    ```
+    Fill in your Supabase credentials:
+    ```env
+    VITE_SUPABASE_URL=your_supabase_url
+    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+    ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+4.  **Database Setup:**
+    Run the SQL scripts in `supabase/schema.sql` in your Supabase SQL Editor to set up tables and policies.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+5.  **Run Development Server:**
+    ```bash
+    npm run dev
+    ```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Project Structure
+*   `src/components`: Reusable UI components.
+*   `src/pages`: Route components (Lobby, Game).
+*   `src/lib`: Supabase client and utilities.
+*   `src/types`: TypeScript definitions (including Supabase generated types).
+
+## Contributing
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## License
+MIT

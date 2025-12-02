@@ -71,3 +71,22 @@
 ## 9. Testing Strategy
 - **Unit Tests:** Write tests for the `Game Logic` pure functions (shuffling, win condition, power activation) using Vitest.
 - **Mocking:** Mock Supabase calls when testing components.
+
+## 10. Git Workflow & Documentation Standards
+- **Conventional Commits:** All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+  - `feat(game): add shuffling logic`
+  - `fix(lobby): resolve join button race condition`
+  - `style(card): update border radius`
+  - `docs(readme): add setup instructions`
+- **Branching Strategy:**
+  - `main`: Production-ready code only. Protected branch.
+  - `dev` (optional): Integration branch.
+  - `feat/feature-name`: For new features (Phase 1, 2, 3 tasks).
+  - `fix/issue-description`: For bug fixes.
+- **Pull Request (PR) Etiquette:**
+  - PRs must be small and focused. Avoid massive "Phase 2 Complete" PRs; break them down into "Deck Generation" and "Turn Structure".
+  - Include a screenshot or GIF for UI changes.
+- **Documentation Hygiene:**
+  - **Inline Docs:** Use TSDoc (`/** ... */`) for all exported functions and complex game logic helpers. Explain *why* a calculation is done, not just *what* it does.
+  - **Supabase Schema:** Maintain a `DB_SCHEMA.md` or updated `types/supabase.ts` file. Any change to the DB schema must be reflected in the repo immediately.
+  - **Implementation Status:** Update `README.md` checklist items as features are completed (Phase 1, Phase 2, etc.) to keep track of progress.
