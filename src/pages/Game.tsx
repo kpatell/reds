@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { useGameState } from '@/hooks/useGameState'
 import { GameBoard } from '@/components/GameBoard'
 import { supabase } from '@/lib/supabase'
-import { initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady, resolvePowerPeekSelf, resolvePowerPeekOpponent } from '@/lib/game/engine'
+import { initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady, resolvePowerPeekSelf, resolvePowerPeekOpponent, finishPeek } from '@/lib/game/engine'
 import type { Database, Json } from '@/types/supabase'
 
 
@@ -202,6 +202,17 @@ export default function Game() {
         }
     }
 
+    const handleFinishPeek = async () => {
+        if (!gameState || !user) return
+
+        try {
+            const newGameState = finishPeek(gameState, user.id)
+            await handleGameUpdate(newGameState)
+        } catch (error: any) {
+            console.error('Error finishing peek:', error)
+        }
+    }
+
     if (!gameState) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen gap-4">
@@ -223,6 +234,7 @@ export default function Game() {
                 onSwap={handleSwap}
                 onReady={handleReady}
                 onResolvePower={handleResolvePower}
+                onFinishPeek={handleFinishPeek}
             />
         </div>
     )

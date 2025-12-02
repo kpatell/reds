@@ -14,7 +14,7 @@ interface PlayerHandProps {
 
 import { useAuth } from '@/components/AuthProvider'
 
-export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName }: PlayerHandProps) {
+export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId }: PlayerHandProps & { viewingCardId?: string | null }) {
     const { user } = useAuth()
 
     return (
@@ -22,8 +22,13 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
             <div className="grid grid-cols-2 gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
                 {player.hand.map((card, index) => {
                     const isKnownByMe = user && card.knownBy?.includes(user.id)
-                    // Show if override, OR if I know it (regardless of whose hand it is)
-                    const shouldShowFaceUp = overrideFaceUp?.includes(index) || isKnownByMe
+
+                    // Logic:
+                    // 1. Override (Peek Phase) -> Show
+                    // 2. Currently Viewing (Power Peek) -> Show
+                    // 3. Known by me -> Show indicator (Ring), but NOT face up
+                    const isViewing = viewingCardId === card.id
+                    const shouldShowFaceUp = overrideFaceUp?.includes(index) || isViewing
 
                     return (
                         <Card
@@ -34,7 +39,8 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
                             className={cn(
                                 !isCurrentUser && "cursor-default hover:translate-y-0",
                                 cardClassName,
-                                isKnownByMe && "ring-2 ring-blue-400/50" // Visual cue for known cards
+                                isKnownByMe && "ring-2 ring-blue-400/50", // Visual cue for known cards
+                                isViewing && "ring-4 ring-yellow-400 scale-105 z-10" // Highlight viewing card
                             )}
                         />
                     )

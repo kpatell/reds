@@ -155,7 +155,12 @@ export function resolvePowerPeekSelf(state: GameState, playerId: string, targetC
         card.knownBy.push(playerId)
     }
 
-    return endTurn(newState)
+    // Transition to viewing phase
+    newState.turnPhase = 'power_peek_viewing'
+    newState.viewingCardId = targetCardId
+    newState.lastActionAt = new Date().toISOString()
+
+    return newState
 }
 
 /**
@@ -187,6 +192,23 @@ export function resolvePowerPeekOpponent(state: GameState, playerId: string, tar
         targetCard.knownBy.push(playerId)
     }
 
+    // Transition to viewing phase
+    newState.turnPhase = 'power_peek_viewing'
+    newState.viewingCardId = targetCardId
+    newState.lastActionAt = new Date().toISOString()
+
+    return newState
+}
+
+/**
+ * Finishes the peek viewing phase and ends the turn.
+ */
+export function finishPeek(state: GameState, playerId: string): GameState {
+    if (!isValidMove(state, playerId)) throw new Error('Not your turn')
+    if (state.turnPhase !== 'power_peek_viewing') throw new Error('Invalid phase')
+
+    const newState = structuredClone(state)
+    newState.viewingCardId = null
     return endTurn(newState)
 }
 
