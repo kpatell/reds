@@ -31,6 +31,7 @@ export interface GameState {
   currentTurnPlayerId: string | null
   turnPhase: TurnPhase
   drawnCard: Card | null // The card currently drawn by the active player
+  drawnCardSource?: 'deck' | 'discard' | null
   lastActionAt: string // ISO timestamp
   winnerId: string | null
 }

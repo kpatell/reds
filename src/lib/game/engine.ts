@@ -67,6 +67,7 @@ export function drawCard(state: GameState, playerId: string, source: 'deck' | 'd
   if (!card) throw new Error('Source is empty')
 
   newState.drawnCard = card
+  newState.drawnCardSource = source
   newState.turnPhase = 'action'
   newState.lastActionAt = new Date().toISOString()
 
@@ -87,11 +88,16 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
   newState.discardPile.push(card)
   newState.drawnCard = null
   
-  // Check for Power Card (7, 8, 9, 10) ONLY if drawn from deck? 
-  // Rules say: "If a player draws a Power Card from the Draw Pile and chooses to discard it immediately"
-  // We need to track where the card came from? Or just check if it matches power criteria.
-  // For now, simple turn end.
+  // Refinement: If player drew from discard and discards it again, 
+  // it's an "undo". Reset phase to 'draw' so they can choose again.
+  if (newState.drawnCardSource === 'discard') {
+      newState.turnPhase = 'draw'
+      newState.drawnCardSource = null
+      newState.lastActionAt = new Date().toISOString()
+      return newState
+  }
   
+  newState.drawnCardSource = null
   return endTurn(newState)
 }
 
@@ -110,13 +116,16 @@ export function swapCard(state: GameState, playerId: string, targetCardId: strin
   if (targetIndex === -1) throw new Error('Card not found in hand')
 
   const oldCard = player.hand[targetIndex]
-  player.hand[targetIndex] = newState.drawnCard!
+  
+  // Refinement: Swapped card goes into hand FACE DOWN
+  player.hand[targetIndex] = { ...newState.drawnCard!, isFaceUp: false }
   
   // Old card goes to discard pile
   oldCard.isFaceUp = true
   newState.discardPile.push(oldCard)
   
   newState.drawnCard = null
+  newState.drawnCardSource = null
   return endTurn(newState)
 }
 
