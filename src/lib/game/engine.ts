@@ -1,4 +1,4 @@
-import type { GameState, PlayerState, Card, Deck } from './types'
+import type { GameState, PlayerState, Card } from './types'
 import { createDeck, shuffleDeck, dealCards } from './deck'
 
 /**
