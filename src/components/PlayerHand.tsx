@@ -14,8 +14,8 @@ interface PlayerHandProps {
 
 export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName }: PlayerHandProps) {
     return (
-        <div className={cn("flex flex-col items-center gap-4", className)}>
-            <div className="grid grid-cols-2 gap-4 p-4 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
+        <div className={cn("flex flex-col items-center gap-2", className)}>
+            <div className="grid grid-cols-2 gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
                 {player.hand.map((card, index) => (
                     <Card
                         key={card.id}
