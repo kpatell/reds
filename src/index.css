@@ -1,13 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --color-background: #fdfbf7;
+  /* Warm beige/paper */
+  --color-surface: #ffffff;
+  --color-surface-hover: #f5f5f0;
+  --color-primary: #dc2626;
+  /* Red-600 */
+  --color-primary-hover: #b91c1c;
+  /* Red-700 */
+  --color-text-main: #1c1917;
+  /* Stone-900 */
+  --color-text-muted: #57534e;
+  /* Stone-500 */
+  --color-border: #e7e5e4;
+  /* Stone-200 */
 }
 
-:root {
-  color-scheme: dark;
-}
-
-body {
-  @apply bg-neutral-950 text-neutral-50 antialiased;
+@layer base {
+  body {
+    @apply bg-[var(--color-background)] text-[var(--color-text-main)] antialiased;
+  }
 }

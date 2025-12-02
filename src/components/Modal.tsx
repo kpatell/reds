@@ -26,17 +26,17 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
             <div
-                className="relative w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl animate-in zoom-in-95 duration-200"
+                className="relative w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-2xl animate-in zoom-in-95 duration-200"
                 role="dialog"
                 aria-modal="true"
             >
-                <div className="flex items-center justify-between p-4 border-b border-neutral-800">
-                    <h2 className="text-lg font-semibold text-white">{title}</h2>
+                <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
+                    <h2 className="text-lg font-semibold text-[var(--color-text-main)]">{title}</h2>
                     <button
                         onClick={onClose}
-                        className="p-1 text-neutral-400 hover:text-white transition-colors rounded-lg hover:bg-neutral-800"
+                        className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors rounded-lg"
                     >
                         <X className="w-5 h-5" />
                     </button>
