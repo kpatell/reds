@@ -73,34 +73,9 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
             </div>
 
             {/* Center Area (Decks & Drawn Card) */}
-            <div className="flex-none flex items-center justify-center gap-6 sm:gap-12 md:gap-16 py-2 relative w-full z-10">
-                {/* Drawn Card (Side Display) */}
-                {gameState.drawnCard && currentPlayer && !isPeekPhase && (
-                    <div className="absolute left-2 lg:left-12 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 animate-in slide-in-from-left-10 fade-in duration-300 z-20">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-background)]/80 px-2 py-1 rounded-md backdrop-blur-sm">
-                            {isMyTurn ? "Draw" : "Opp."}
-                        </span>
-                        <div className="flex flex-col items-center gap-2 bg-[var(--color-surface)]/90 p-2 rounded-xl backdrop-blur-sm border border-[var(--color-border)] shadow-xl">
-                            <Card
-                                card={{ ...gameState.drawnCard, isFaceUp: showDrawnCard }}
-                                className="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
-                            />
+            <div className="flex-none flex items-center justify-between px-8 sm:px-16 md:px-32 py-2 relative w-full z-10 max-w-4xl mx-auto">
 
-                            {isMyTurn && (
-                                <div className="flex flex-col gap-1 w-full">
-                                    <button
-                                        onClick={() => onDiscard?.()}
-                                        className="bg-red-100 text-red-700 px-2 py-1 rounded-md hover:bg-red-200 transition-colors font-medium text-[10px] w-full"
-                                    >
-                                        Discard
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Draw Pile */}
+                {/* Draw Pile (Left) */}
                 <div
                     onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && onDraw?.('deck')}
                     className={cn(
@@ -114,9 +89,40 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
                     {/* Stack effect */}
                     <div className="absolute top-1 left-1 w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 bg-[var(--color-primary)] rounded-xl -z-10 border-2 border-white/10"></div>
                     <div className="absolute top-2 left-2 w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 bg-[var(--color-primary)] rounded-xl -z-20 border-2 border-white/10"></div>
+                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                        Deck
+                    </div>
                 </div>
 
-                {/* Discard Pile */}
+                {/* Drawn Card (Center) */}
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+                    {gameState.drawnCard && currentPlayer && !isPeekPhase && (
+                        <div className="flex flex-col items-center gap-2 animate-in zoom-in-90 fade-in duration-300">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-background)]/80 px-2 py-1 rounded-md backdrop-blur-sm shadow-sm">
+                                {isMyTurn ? "Current Draw" : "Opponent Drew"}
+                            </span>
+                            <div className="flex flex-col items-center gap-2 bg-[var(--color-surface)]/90 p-2 rounded-xl backdrop-blur-sm border border-[var(--color-border)] shadow-2xl ring-1 ring-black/5">
+                                <Card
+                                    card={{ ...gameState.drawnCard, isFaceUp: showDrawnCard }}
+                                    className="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 shadow-md"
+                                />
+
+                                {isMyTurn && (
+                                    <div className="flex flex-col gap-1 w-full">
+                                        <button
+                                            onClick={() => onDiscard?.()}
+                                            className="bg-red-100 text-red-700 px-2 py-1.5 rounded-md hover:bg-red-200 transition-colors font-bold text-[10px] w-full uppercase tracking-wide"
+                                        >
+                                            Discard
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Discard Pile (Right) */}
                 <div
                     onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && onDraw?.('discard')}
                     className={cn(
@@ -130,10 +136,13 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
                             className="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                         />
                     ) : (
-                        <div className="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 border-2 border-dashed border-[var(--color-border)] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] text-xs sm:text-sm">
-                            Discard
+                        <div className="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 border-2 border-dashed border-[var(--color-border)] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] text-xs sm:text-sm bg-[var(--color-surface)]/30">
+                            Empty
                         </div>
                     )}
+                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                        Discard
+                    </div>
                 </div>
             </div>
 
