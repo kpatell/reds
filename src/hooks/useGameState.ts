@@ -96,8 +96,8 @@ function mapRowToGameState(row: GameRow): GameState {
     discardPile: (row.discard_pile as any) || [],
     players: players,
     currentTurnPlayerId: row.current_turn_player_id,
-    turnPhase: 'draw', 
-    drawnCard: null,
+    turnPhase: (row.turn_phase as any) || 'draw',
+    drawnCard: (row.drawn_card as any) || null,
     lastActionAt: row.last_action_at || new Date().toISOString(),
     winnerId: null
   }

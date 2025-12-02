@@ -58,6 +58,8 @@ export default function Game() {
                         discard_pile: newGameState.discardPile as unknown as Json,
                         players: newGameState.players as unknown as Json,
                         current_turn_player_id: newGameState.currentTurnPlayerId,
+                        turn_phase: newGameState.turnPhase,
+                        drawn_card: newGameState.drawnCard as unknown as Json,
                         last_action_at: new Date().toISOString()
                     }
 
@@ -119,6 +121,8 @@ export default function Game() {
             discard_pile: newGameState.discardPile as unknown as Json,
             players: newGameState.players as unknown as Json,
             current_turn_player_id: newGameState.currentTurnPlayerId,
+            turn_phase: newGameState.turnPhase,
+            drawn_card: newGameState.drawnCard as unknown as Json,
             last_action_at: new Date().toISOString()
         }
 
