@@ -124,7 +124,7 @@ export function swapCard(state: GameState, playerId: string, targetCardId: strin
  * Ends the current turn and passes to the next player.
  */
 function endTurn(state: GameState): GameState {
-  const playerIds = Object.keys(state.players)
+  const playerIds = Object.keys(state.players).sort()
   const currentIndex = playerIds.indexOf(state.currentTurnPlayerId!)
   const nextIndex = (currentIndex + 1) % playerIds.length
   
