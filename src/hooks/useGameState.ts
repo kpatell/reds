@@ -67,21 +67,27 @@ export function useGameState(gameId: string) {
 }
 
 function mapRowToGameState(row: GameRow): GameState {
-  // TODO: Robust mapping. For now, assuming JSON structure matches.
-  // We need to be careful about 'players' being a JSONB object in DB vs Record<string, PlayerState> in TS.
-  // The types should align if we typed the DB JSON correctly.
+  const players = (row.players as any) || {}
   
+  // Ensure every player has a hand array to prevent UI crashes
+  Object.keys(players).forEach(key => {
+    if (!players[key].hand) {
+      players[key].hand = []
+    }
+    if (!players[key].roundsWon) {
+        players[key].roundsWon = 0
+    }
+  })
+
   return {
     id: row.id,
     status: row.status,
-    deck: row.deck as any, // Cast for now, should validate
-    discardPile: row.discard_pile as any,
-    players: row.players as any,
+    deck: (row.deck as any) || [],
+    discardPile: (row.discard_pile as any) || [],
+    players: players,
     currentTurnPlayerId: row.current_turn_player_id,
-    turnPhase: 'draw', // Default for now, need to persist this in DB if we want it to survive refresh!
-    // Wait, DB doesn't have turnPhase? We need to add it to schema or derive it.
-    // For now, let's assume 'draw' if not present.
-    drawnCard: null, // DB doesn't track this yet?
+    turnPhase: 'draw', 
+    drawnCard: null,
     lastActionAt: row.last_action_at || new Date().toISOString(),
     winnerId: null
   }

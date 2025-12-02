@@ -11,8 +11,8 @@ import type { Database, Json } from '@/types/supabase'
 
 export default function Game() {
     const { gameId } = useParams()
-    const { user } = useAuth()
-    const { gameState, loading, error } = useGameState(gameId!)
+    const { user, loading: authLoading } = useAuth()
+    const { gameState, loading: gameLoading, error } = useGameState(gameId!)
 
     useEffect(() => {
         if (!gameState || !user || !gameId) return
@@ -30,7 +30,7 @@ export default function Game() {
 
                 // Add myself to players
 
-                // We need a proper PlayerState. 
+                // We need a proper PlayerState.
                 // Since we don't have the full profile here, we'll use a placeholder or fetch it.
                 // For anonymous auth, we might not have a username.
                 const username = user.email?.split('@')[0] || 'Guest'
@@ -61,21 +61,26 @@ export default function Game() {
                     if (error) console.error('Error starting game:', error)
                 } else {
                     // Just join as waiting
-                    // We need to construct a partial PlayerState or just update the JSONB
-                    // This is tricky because `initializeGame` creates the full state.
-                    // If we are just joining, we might not have a hand yet.
-                    // But `PlayerState` requires `hand`.
-                    // So we should probably NOT add to `players` map until we start?
-                    // OR we add with empty hand.
+                    const newPlayerState = {
+                        id: user.id,
+                        username,
+                        hand: [],
+                        isReady: true,
+                        hasCalledReds: false,
+                        roundsWon: 0
+                    }
 
-                    // Actually, if we are just joining a waiting room, we update the `players` JSONB.
-                    // But our `GameState` type expects `players` to be `Record<string, PlayerState>`.
-                    // And `PlayerState` has `hand`.
-                    // So we can't really add a player without a hand if we strictly follow types.
+                    const newPlayers = {
+                        ...gameState.players,
+                        [user.id]: newPlayerState
+                    }
 
-                    // Solution: The DB `players` column is JSONB. We can store whatever.
-                    // But `useGameState` maps it to `GameState`.
-                    // Let's assume for 'waiting' status, hands can be empty.
+                    const { error } = await (supabase
+                        .from('games') as any)
+                        .update({ players: newPlayers as unknown as Json })
+                        .eq('id', gameId)
+
+                    if (error) console.error('Error joining game:', error)
                 }
             }
         }
@@ -83,7 +88,7 @@ export default function Game() {
         joinAndStartGame()
     }, [gameState, user, gameId])
 
-    if (loading) {
+    if (authLoading || gameLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary)]" />
