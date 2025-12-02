@@ -14,16 +14,6 @@ interface PlayerHandProps {
 export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp }: PlayerHandProps) {
     return (
         <div className={cn("flex flex-col items-center gap-4", className)}>
-            <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold">
-                    {player.username.charAt(0).toUpperCase()}
-                </div>
-                <span className="font-medium text-[var(--color-text-main)]">{player.username}</span>
-                {player.isReady && (
-                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Ready</span>
-                )}
-            </div>
-
             <div className="grid grid-cols-2 gap-4 p-4 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
                 {player.hand.map((card, index) => (
                     <Card
@@ -36,6 +26,16 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
                         )}
                     />
                 ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold">
+                    {player.username.charAt(0).toUpperCase()}
+                </div>
+                <span className="font-medium text-[var(--color-text-main)]">{player.username}</span>
+                {player.isReady && (
+                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Ready</span>
+                )}
             </div>
         </div>
     )
