@@ -20,7 +20,7 @@ export interface PlayerState {
   roundsWon: number
 }
 
-export type TurnPhase = 'draw' | 'action' | 'discard_power'
+export type TurnPhase = 'peek' | 'draw' | 'action' | 'discard_power'
 
 export interface GameState {
   id: string

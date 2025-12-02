@@ -9,8 +9,8 @@ export function initializeGame(gameId: string, players: { id: string; username: 
   const playerIds = players.map(p => p.id)
   const { hands, remainingDeck } = dealCards(deck, playerIds)
   
-  // Create discard pile with one card
-  const discardPile = [remainingDeck.pop()!]
+  // Create discard pile with NO cards (User Request #4)
+  const discardPile: Card[] = []
 
   const playerStates: Record<string, PlayerState> = {}
   players.forEach(p => {
@@ -31,11 +31,32 @@ export function initializeGame(gameId: string, players: { id: string; username: 
     discardPile,
     players: playerStates,
     currentTurnPlayerId: playerIds[0], // Player 1 starts
-    turnPhase: 'draw',
+    turnPhase: 'peek', // Start in Peek phase (User Request #5)
     drawnCard: null,
     lastActionAt: new Date().toISOString(),
     winnerId: null
   }
+}
+
+/**
+ * Sets a player as ready (used for Peek phase).
+ */
+export function setPlayerReady(state: GameState, playerId: string): GameState {
+    const newState = structuredClone(state)
+    const player = newState.players[playerId]
+    player.isReady = true
+    
+    // Check if all players are ready
+    const allReady = Object.values(newState.players).every(p => p.isReady)
+    
+    if (allReady && newState.turnPhase === 'peek') {
+        newState.turnPhase = 'draw'
+        // Reset ready status for future rounds if needed, or keep it?
+        // For now, keep it true to show they joined.
+    }
+    
+    newState.lastActionAt = new Date().toISOString()
+    return newState
 }
 
 /**

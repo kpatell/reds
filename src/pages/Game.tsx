@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { useGameState } from '@/hooks/useGameState'
 import { GameBoard } from '@/components/GameBoard'
 import { supabase } from '@/lib/supabase'
-import { initializeGame, drawCard, discardDrawnCard, swapCard } from '@/lib/game/engine'
+import { initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady } from '@/lib/game/engine'
 import type { Database, Json } from '@/types/supabase'
 
 
@@ -170,6 +170,16 @@ export default function Game() {
         }
     }
 
+    const handleReady = async () => {
+        if (!gameState || !user) return
+        try {
+            const newState = setPlayerReady(gameState, user.id)
+            await handleGameUpdate(newState)
+        } catch (err: any) {
+            console.error('Ready failed:', err.message)
+        }
+    }
+
     if (!gameState) {
         return (
             <div className="min-h-screen flex items-center justify-center flex-col gap-4">
@@ -187,6 +197,7 @@ export default function Game() {
                 onDraw={handleDraw}
                 onDiscard={handleDiscard}
                 onSwap={handleSwap}
+                onReady={handleReady}
             />
         </div>
     )

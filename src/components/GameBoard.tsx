@@ -10,9 +10,10 @@ interface GameBoardProps {
     onDraw?: (source: 'deck' | 'discard') => void
     onDiscard?: () => void
     onSwap?: (cardId: string) => void
+    onReady?: () => void
 }
 
-export function GameBoard({ gameState, onDraw, onDiscard, onSwap }: GameBoardProps) {
+export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: GameBoardProps) {
     const { user } = useAuth()
 
     if (!user) {
@@ -28,6 +29,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap }: GameBoardPro
 
     const isMyTurn = gameState.currentTurnPlayerId === user.id
     const isActionPhase = gameState.turnPhase === 'action'
+    const isPeekPhase = gameState.turnPhase === 'peek'
 
     // Visibility Logic:
     // If it's my turn, I see the card.
@@ -35,17 +37,23 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap }: GameBoardPro
     const showDrawnCard = isMyTurn || gameState.drawnCardSource === 'discard'
 
     return (
-        <div className="flex flex-col h-screen w-full max-w-4xl mx-auto p-4 gap-4 overflow-hidden">
-            {/* Turn Indicator */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-                <div className={cn(
-                    "px-4 py-2 rounded-full font-bold shadow-lg transition-all duration-300",
-                    isMyTurn
-                        ? "bg-[var(--color-primary)] text-white scale-110"
-                        : "bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)]"
-                )}>
-                    {isMyTurn ? "YOUR TURN" : "OPPONENT'S TURN"}
-                </div>
+        <div className="flex flex-col h-screen w-full max-w-6xl mx-auto p-4 gap-4 overflow-hidden relative">
+            {/* Header: Leave Game & Turn Info */}
+            <div className="flex justify-between items-center z-20">
+                <a href="/" className="text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex items-center gap-2">
+                    ← Leave Game
+                </a>
+
+                {!isPeekPhase && (
+                    <div className={cn(
+                        "px-4 py-1.5 rounded-full font-bold text-sm transition-all duration-300",
+                        isMyTurn
+                            ? "bg-[var(--color-primary)] text-white"
+                            : "bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)]"
+                    )}>
+                        {isMyTurn ? "YOUR TURN" : "OPPONENT'S TURN"}
+                    </div>
+                )}
             </div>
 
             {/* Opponent Area (Top) */}
@@ -54,7 +62,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap }: GameBoardPro
                     <PlayerHand
                         player={opponent}
                         isCurrentUser={false}
-                        className={isMyTurn ? "opacity-50 transition-opacity" : ""}
+                        className={isMyTurn && !isPeekPhase ? "opacity-50 transition-opacity" : ""}
                     />
                 ) : (
                     <div className="text-[var(--color-text-muted)] animate-pulse rotate-180">
@@ -63,14 +71,40 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap }: GameBoardPro
                 )}
             </div>
 
-            {/* Center Area (Decks) */}
-            <div className="flex-none flex items-center justify-center gap-12 py-4">
+            {/* Center Area (Decks & Drawn Card) */}
+            <div className="flex-none flex items-center justify-center gap-16 py-4 relative">
+                {/* Drawn Card (Side Display) */}
+                {gameState.drawnCard && currentPlayer && !isPeekPhase && (
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 animate-in slide-in-from-left-10 fade-in duration-300 z-20">
+                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                            {isMyTurn ? "Current Draw" : "Opponent"}
+                        </span>
+                        <div className="flex flex-col items-center gap-3 bg-[var(--color-surface)]/80 p-3 rounded-2xl backdrop-blur-sm border border-[var(--color-border)] shadow-xl">
+                            <Card card={{ ...gameState.drawnCard, isFaceUp: showDrawnCard }} />
+
+                            {isMyTurn && (
+                                <div className="flex flex-col gap-2 w-full">
+                                    <button
+                                        onClick={() => onDiscard?.()}
+                                        className="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-200 transition-colors font-medium text-xs w-full"
+                                    >
+                                        Discard
+                                    </button>
+                                    <span className="text-[10px] text-[var(--color-text-muted)] text-center leading-tight max-w-[80px]">
+                                        Click hand to swap
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Draw Pile */}
                 <div
-                    onClick={() => isMyTurn && !isActionPhase && onDraw?.('deck')}
+                    onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && onDraw?.('deck')}
                     className={cn(
                         "relative group transition-transform",
-                        isMyTurn && !isActionPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-80"
+                        isMyTurn && !isActionPhase && !isPeekPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-80"
                     )}
                 >
                     <div className="w-24 h-36 bg-[var(--color-primary)] rounded-xl border-2 border-white/10 shadow-lg flex items-center justify-center">
@@ -83,10 +117,10 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap }: GameBoardPro
 
                 {/* Discard Pile */}
                 <div
-                    onClick={() => isMyTurn && !isActionPhase && onDraw?.('discard')}
+                    onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && onDraw?.('discard')}
                     className={cn(
                         "relative transition-transform",
-                        isMyTurn && !isActionPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed"
+                        isMyTurn && !isActionPhase && !isPeekPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed"
                     )}
                 >
                     {topCard ? (
@@ -100,44 +134,48 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap }: GameBoardPro
             </div>
 
             {/* Player Area (Bottom) */}
-            <div className="flex-1 flex flex-col items-center justify-end gap-4 min-h-0">
-                {/* Drawn Card Area */}
-                {gameState.drawnCard && currentPlayer && (
-                    <div className="flex flex-col items-center gap-2 animate-in slide-in-from-bottom-10 fade-in duration-300 z-20">
-                        <span className="text-sm font-medium text-[var(--color-text-muted)]">
-                            {isMyTurn ? "Drawn Card" : "Opponent Drawing..."}
-                        </span>
-                        <div className="flex items-center gap-4 bg-[var(--color-surface)]/80 p-4 rounded-2xl backdrop-blur-sm border border-[var(--color-border)] shadow-xl">
-                            <Card card={{ ...gameState.drawnCard, isFaceUp: showDrawnCard }} />
-
-                            {isMyTurn && (
-                                <div className="flex flex-col gap-2">
-                                    <button
-                                        onClick={() => onDiscard?.()}
-                                        className="bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors font-medium text-sm"
-                                    >
-                                        Discard
-                                    </button>
-                                    <span className="text-xs text-[var(--color-text-muted)] text-center max-w-[100px]">
-                                        Click a card in your hand to swap
-                                    </span>
-                                </div>
-                            )}
+            <div className="flex-1 flex flex-col items-center justify-end gap-4 min-h-0 relative">
+                {isPeekPhase && currentPlayer && !currentPlayer.isReady && (
+                    <div className="absolute -top-12 z-30 animate-bounce">
+                        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] px-4 py-2 rounded-full shadow-lg text-sm font-medium">
+                            Peek at your bottom 2 cards!
                         </div>
                     </div>
                 )}
 
                 {currentPlayer && (
-                    <PlayerHand
-                        player={currentPlayer}
-                        isCurrentUser={true}
-                        onCardClick={(card) => {
-                            if (gameState.drawnCard && isMyTurn) {
-                                onSwap?.(card.id)
-                            }
-                        }}
-                        className={!isMyTurn ? "opacity-75" : ""}
-                    />
+                    <div className="flex flex-col items-center gap-4">
+                        <PlayerHand
+                            player={currentPlayer}
+                            isCurrentUser={true}
+                            onCardClick={(card) => {
+                                if (gameState.drawnCard && isMyTurn && !isPeekPhase) {
+                                    onSwap?.(card.id)
+                                }
+                            }}
+                            className={!isMyTurn && !isPeekPhase ? "opacity-75" : ""}
+                            // Pass peek mode to PlayerHand? Or handle it here?
+                            // PlayerHand renders cards. We need to override faceUp for bottom 2 cards during peek.
+                            // Actually, PlayerHand takes `player` which has `hand`.
+                            // We can map the hand to force faceUp for bottom 2 if peeking.
+                            overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
+                        />
+
+                        {isPeekPhase && !currentPlayer.isReady && (
+                            <button
+                                onClick={() => onReady?.()}
+                                className="mb-8 bg-[var(--color-primary)] text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:scale-105 transition-transform animate-in fade-in slide-in-from-bottom-4"
+                            >
+                                I'm Ready to Play
+                            </button>
+                        )}
+
+                        {isPeekPhase && currentPlayer.isReady && (
+                            <div className="mb-8 text-[var(--color-text-muted)] animate-pulse">
+                                Waiting for opponent to ready up...
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
         </div>

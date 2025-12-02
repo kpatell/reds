@@ -8,9 +8,10 @@ interface PlayerHandProps {
     onCardClick?: (card: CardType) => void
     selectedCardId?: string | null
     className?: string
+    overrideFaceUp?: number[] // Indices of cards to force face up
 }
 
-export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className }: PlayerHandProps) {
+export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp }: PlayerHandProps) {
     return (
         <div className={cn("flex flex-col items-center gap-4", className)}>
             <div className="flex items-center gap-2">
@@ -24,10 +25,10 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
             </div>
 
             <div className="grid grid-cols-2 gap-4 p-4 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
-                {player.hand.map((card) => (
+                {player.hand.map((card, index) => (
                     <Card
                         key={card.id}
-                        card={card}
+                        card={overrideFaceUp?.includes(index) ? { ...card, isFaceUp: true } : card}
                         onClick={() => onCardClick?.(card)}
                         isSelected={selectedCardId === card.id}
                         className={cn(
