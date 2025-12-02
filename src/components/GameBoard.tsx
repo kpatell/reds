@@ -57,7 +57,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
             </div>
 
             {/* Opponent Area (Top) */}
-            <div className="flex-1 flex items-start justify-center rotate-180 min-h-0">
+            <div className="flex-1 flex items-end justify-center rotate-180 min-h-0 pb-4">
                 {opponent ? (
                     <PlayerHand
                         player={opponent}
