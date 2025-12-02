@@ -32,6 +32,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     const isActionPhase = gameState.turnPhase === 'action'
     const isPeekPhase = gameState.turnPhase === 'peek'
     const isPowerPeekSelfPhase = gameState.turnPhase === 'power_peek_self'
+    const isPowerPeekOpponentPhase = gameState.turnPhase === 'power_peek_opponent'
 
     // Visibility Logic:
     // If it's my turn, I see the card.
@@ -59,12 +60,26 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             </div>
 
             {/* Opponent Area (Top) */}
-            <div className="flex-1 flex items-end justify-center rotate-180 min-h-0 pb-4">
+            <div className="flex-1 flex items-end justify-center rotate-180 min-h-0 pb-4 relative">
+                {isPowerPeekOpponentPhase && isMyTurn && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce rotate-180">
+                        <div className="bg-blue-100 border border-blue-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-blue-700">
+                            Peek opponent's card!
+                        </div>
+                        <div className="w-2 h-2 bg-blue-100 border-b border-r border-blue-300 absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
+                    </div>
+                )}
+
                 {opponent ? (
                     <PlayerHand
                         player={opponent}
                         isCurrentUser={false}
-                        className={isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase ? "opacity-50 transition-opacity" : ""}
+                        onCardClick={(card) => {
+                            if (isPowerPeekOpponentPhase && isMyTurn) {
+                                onResolvePower?.(card.id)
+                            }
+                        }}
+                        className={isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase ? "opacity-50 transition-opacity" : ""}
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                     />
                 ) : (
@@ -176,13 +191,13 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                             player={currentPlayer}
                             isCurrentUser={true}
                             onCardClick={(card) => {
-                                if (gameState.drawnCard && isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase) {
+                                if (gameState.drawnCard && isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase) {
                                     onSwap?.(card.id)
                                 } else if (isPowerPeekSelfPhase && isMyTurn) {
                                     onResolvePower?.(card.id)
                                 }
                             }}
-                            className={!isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase ? "opacity-75" : ""}
+                            className={!isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase ? "opacity-75" : ""}
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                         />

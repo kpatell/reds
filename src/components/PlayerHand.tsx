@@ -22,7 +22,8 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
             <div className="grid grid-cols-2 gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
                 {player.hand.map((card, index) => {
                     const isKnownByMe = user && card.knownBy?.includes(user.id)
-                    const shouldShowFaceUp = overrideFaceUp?.includes(index) || (isCurrentUser && isKnownByMe)
+                    // Show if override, OR if I know it (regardless of whose hand it is)
+                    const shouldShowFaceUp = overrideFaceUp?.includes(index) || isKnownByMe
 
                     return (
                         <Card

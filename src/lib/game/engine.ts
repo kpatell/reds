@@ -121,8 +121,14 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
   newState.drawnCardSource = null
 
   // Check for Power Cards (7 or 8)
-  if (card.rank === '7' || card.rank === '8') {
+  if (card.rank === '7') {
       newState.turnPhase = 'power_peek_self'
+      newState.lastActionAt = new Date().toISOString()
+      return newState
+  }
+  
+  if (card.rank === '8') {
+      newState.turnPhase = 'power_peek_opponent'
       newState.lastActionAt = new Date().toISOString()
       return newState
   }
@@ -131,9 +137,9 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
 }
 
 /**
- * Resolves the "Peek Self" power (7/8).
+ * Resolves the "Peek Self" power (7).
  */
-export function resolvePowerPeek(state: GameState, playerId: string, targetCardId: string): GameState {
+export function resolvePowerPeekSelf(state: GameState, playerId: string, targetCardId: string): GameState {
     if (!isValidMove(state, playerId)) throw new Error('Not your turn')
     if (state.turnPhase !== 'power_peek_self') throw new Error('Invalid phase')
 
@@ -147,6 +153,38 @@ export function resolvePowerPeek(state: GameState, playerId: string, targetCardI
     if (!card.knownBy) card.knownBy = []
     if (!card.knownBy.includes(playerId)) {
         card.knownBy.push(playerId)
+    }
+
+    return endTurn(newState)
+}
+
+/**
+ * Resolves the "Peek Opponent" power (8).
+ */
+export function resolvePowerPeekOpponent(state: GameState, playerId: string, targetCardId: string): GameState {
+    if (!isValidMove(state, playerId)) throw new Error('Not your turn')
+    if (state.turnPhase !== 'power_peek_opponent') throw new Error('Invalid phase')
+
+    const newState = structuredClone(state)
+    
+    // Find the card in ANY opponent's hand
+    let targetCard: Card | undefined
+
+    for (const pid of Object.keys(newState.players)) {
+        if (pid === playerId) continue
+        const card = newState.players[pid].hand.find(c => c.id === targetCardId)
+        if (card) {
+            targetCard = card
+            break
+        }
+    }
+
+    if (!targetCard) throw new Error('Card not found in opponent hand')
+
+    // Reveal the card to the player (me)
+    if (!targetCard.knownBy) targetCard.knownBy = []
+    if (!targetCard.knownBy.includes(playerId)) {
+        targetCard.knownBy.push(playerId)
     }
 
     return endTurn(newState)

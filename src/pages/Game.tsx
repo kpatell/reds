@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { useGameState } from '@/hooks/useGameState'
 import { GameBoard } from '@/components/GameBoard'
 import { supabase } from '@/lib/supabase'
-import { initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady, resolvePowerPeek } from '@/lib/game/engine'
+import { initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady, resolvePowerPeekSelf, resolvePowerPeekOpponent } from '@/lib/game/engine'
 import type { Database, Json } from '@/types/supabase'
 
 
@@ -184,20 +184,17 @@ export default function Game() {
         if (!gameState || !user) return
 
         try {
-            const newGameState = resolvePowerPeek(gameState, user.id, targetCardId)
+            let newGameState
+            if (gameState.turnPhase === 'power_peek_self') {
+                newGameState = resolvePowerPeekSelf(gameState, user.id, targetCardId)
+            } else if (gameState.turnPhase === 'power_peek_opponent') {
+                newGameState = resolvePowerPeekOpponent(gameState, user.id, targetCardId)
+            } else {
+                return
+            }
 
-            // Optimistic update
-            // setGameState(newGameState) // Optional, since subscription is fast
-
-            await (supabase
-                .from('games') as any)
-                .update({
-                    current_turn_player_id: newGameState.currentTurnPlayerId,
-                    turn_phase: newGameState.turnPhase,
-                    players: newGameState.players as unknown as Json, // Contains the new knownBy data
-                    last_action_at: new Date().toISOString()
-                })
-                .eq('id', gameId!)
+            // Use handleGameUpdate to send the FULL state, preventing deck data loss
+            await handleGameUpdate(newGameState)
 
         } catch (error: any) {
             console.error('Error resolving power:', error)
