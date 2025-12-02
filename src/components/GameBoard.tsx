@@ -72,14 +72,14 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
             </div>
 
             {/* Center Area (Decks & Drawn Card) */}
-            <div className="flex-none flex items-center justify-center gap-16 py-4 relative">
+            <div className="flex-none flex items-center justify-center gap-16 py-4 relative w-full">
                 {/* Drawn Card (Side Display) */}
                 {gameState.drawnCard && currentPlayer && !isPeekPhase && (
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 animate-in slide-in-from-left-10 fade-in duration-300 z-20">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                    <div className="absolute left-4 lg:left-12 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 animate-in slide-in-from-left-10 fade-in duration-300 z-20">
+                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-background)]/80 px-2 py-1 rounded-md backdrop-blur-sm">
                             {isMyTurn ? "Current Draw" : "Opponent"}
                         </span>
-                        <div className="flex flex-col items-center gap-3 bg-[var(--color-surface)]/80 p-3 rounded-2xl backdrop-blur-sm border border-[var(--color-border)] shadow-xl">
+                        <div className="flex flex-col items-center gap-3 bg-[var(--color-surface)]/90 p-3 rounded-2xl backdrop-blur-sm border border-[var(--color-border)] shadow-xl">
                             <Card card={{ ...gameState.drawnCard, isFaceUp: showDrawnCard }} />
 
                             {isMyTurn && (
@@ -134,17 +134,19 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
             </div>
 
             {/* Player Area (Bottom) */}
-            <div className="flex-1 flex flex-col items-center justify-end gap-4 min-h-0 relative">
-                {isPeekPhase && currentPlayer && !currentPlayer.isReady && (
-                    <div className="absolute -top-12 z-30 animate-bounce">
-                        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] px-4 py-2 rounded-full shadow-lg text-sm font-medium">
-                            Peek at your bottom 2 cards!
-                        </div>
-                    </div>
-                )}
-
+            <div className="flex-1 flex flex-col items-center justify-end gap-4 min-h-0 relative pb-8">
                 {currentPlayer && (
-                    <div className="flex flex-col items-center gap-4">
+                    <div className="flex flex-col items-center gap-6 relative">
+                        {/* Peek Message - Positioned relative to hand */}
+                        {isPeekPhase && !currentPlayer.isReady && (
+                            <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce">
+                                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] px-6 py-2 rounded-full shadow-lg text-sm font-bold text-[var(--color-primary)]">
+                                    Peek at your bottom 2 cards!
+                                </div>
+                                <div className="w-3 h-3 bg-[var(--color-surface)] border-b border-r border-[var(--color-border)] absolute left-1/2 -bottom-1.5 -translate-x-1/2 rotate-45"></div>
+                            </div>
+                        )}
+
                         <PlayerHand
                             player={currentPlayer}
                             isCurrentUser={true}
@@ -154,24 +156,20 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
                                 }
                             }}
                             className={!isMyTurn && !isPeekPhase ? "opacity-75" : ""}
-                            // Pass peek mode to PlayerHand? Or handle it here?
-                            // PlayerHand renders cards. We need to override faceUp for bottom 2 cards during peek.
-                            // Actually, PlayerHand takes `player` which has `hand`.
-                            // We can map the hand to force faceUp for bottom 2 if peeking.
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                         />
 
                         {isPeekPhase && !currentPlayer.isReady && (
                             <button
                                 onClick={() => onReady?.()}
-                                className="mb-8 bg-[var(--color-primary)] text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:scale-105 transition-transform animate-in fade-in slide-in-from-bottom-4"
+                                className="bg-[var(--color-primary)] text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:scale-105 transition-transform animate-in fade-in slide-in-from-bottom-4"
                             >
                                 I'm Ready to Play
                             </button>
                         )}
 
                         {isPeekPhase && currentPlayer.isReady && (
-                            <div className="mb-8 text-[var(--color-text-muted)] animate-pulse">
+                            <div className="text-[var(--color-text-muted)] animate-pulse font-medium">
                                 Waiting for opponent to ready up...
                             </div>
                         )}
