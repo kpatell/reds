@@ -33,6 +33,7 @@ export function createDeck(): Deck {
         rank,
         value: getCardValue(rank, suit),
         isFaceUp: false,
+        knownBy: []
       })
     }
   }

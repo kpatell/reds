@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { useGameState } from '@/hooks/useGameState'
 import { GameBoard } from '@/components/GameBoard'
 import { supabase } from '@/lib/supabase'
-import { initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady } from '@/lib/game/engine'
+import { initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady, resolvePowerPeek } from '@/lib/game/engine'
 import type { Database, Json } from '@/types/supabase'
 
 
@@ -180,12 +180,39 @@ export default function Game() {
         }
     }
 
+    const handleResolvePower = async (targetCardId: string) => {
+        if (!gameState || !user) return
+
+        try {
+            const newGameState = resolvePowerPeek(gameState, user.id, targetCardId)
+
+            // Optimistic update
+            // setGameState(newGameState) // Optional, since subscription is fast
+
+            await (supabase
+                .from('games') as any)
+                .update({
+                    current_turn_player_id: newGameState.currentTurnPlayerId,
+                    turn_phase: newGameState.turnPhase,
+                    players: newGameState.players as unknown as Json, // Contains the new knownBy data
+                    last_action_at: new Date().toISOString()
+                })
+                .eq('id', gameId!)
+
+        } catch (error: any) {
+            console.error('Error resolving power:', error)
+            // toast.error(error.message)
+        }
+    }
+
     if (!gameState) {
         return (
-            <div className="min-h-screen flex items-center justify-center flex-col gap-4">
-                <div className="text-xl font-bold text-[var(--color-text-muted)]">Game not found</div>
-                <div className="text-sm text-[var(--color-text-muted)]">ID: {gameId}</div>
-                <div className="text-xs text-red-400">Debug: User={user ? 'Yes' : 'No'}, AuthLoading={authLoading ? 'Yes' : 'No'}</div>
+            <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+                <div className="text-xl font-bold text-red-600">Game not found</div>
+                <div className="text-sm text-gray-500">ID: {gameId}</div>
+                <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-500 text-white rounded">
+                    Retry
+                </button>
             </div>
         )
     }
@@ -198,8 +225,8 @@ export default function Game() {
                 onDiscard={handleDiscard}
                 onSwap={handleSwap}
                 onReady={handleReady}
+                onResolvePower={handleResolvePower}
             />
         </div>
     )
 }
-

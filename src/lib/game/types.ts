@@ -7,6 +7,7 @@ export interface Card {
   rank: Rank
   value: number // Numeric value for scoring (-2 to 13)
   isFaceUp: boolean
+  knownBy?: string[] // IDs of players who have peeked at this card
 }
 
 export type Deck = Card[]
@@ -20,7 +21,7 @@ export interface PlayerState {
   roundsWon: number
 }
 
-export type TurnPhase = 'peek' | 'draw' | 'action' | 'discard_power'
+export type TurnPhase = 'peek' | 'draw' | 'action' | 'discard_power' | 'power_peek_self'
 
 export interface GameState {
   id: string

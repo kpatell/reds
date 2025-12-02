@@ -12,22 +12,32 @@ interface PlayerHandProps {
     cardClassName?: string
 }
 
+import { useAuth } from '@/components/AuthProvider'
+
 export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName }: PlayerHandProps) {
+    const { user } = useAuth()
+
     return (
         <div className={cn("flex flex-col items-center gap-2", className)}>
             <div className="grid grid-cols-2 gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
-                {player.hand.map((card, index) => (
-                    <Card
-                        key={card.id}
-                        card={overrideFaceUp?.includes(index) ? { ...card, isFaceUp: true } : card}
-                        onClick={() => onCardClick?.(card)}
-                        isSelected={selectedCardId === card.id}
-                        className={cn(
-                            !isCurrentUser && "cursor-default hover:translate-y-0",
-                            cardClassName
-                        )}
-                    />
-                ))}
+                {player.hand.map((card, index) => {
+                    const isKnownByMe = user && card.knownBy?.includes(user.id)
+                    const shouldShowFaceUp = overrideFaceUp?.includes(index) || (isCurrentUser && isKnownByMe)
+
+                    return (
+                        <Card
+                            key={card.id}
+                            card={shouldShowFaceUp ? { ...card, isFaceUp: true } : card}
+                            onClick={() => onCardClick?.(card)}
+                            isSelected={selectedCardId === card.id}
+                            className={cn(
+                                !isCurrentUser && "cursor-default hover:translate-y-0",
+                                cardClassName,
+                                isKnownByMe && "ring-2 ring-blue-400/50" // Visual cue for known cards
+                            )}
+                        />
+                    )
+                })}
             </div>
 
             <div className="flex items-center gap-2">

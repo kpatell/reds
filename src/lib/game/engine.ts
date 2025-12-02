@@ -119,7 +119,37 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
   }
   
   newState.drawnCardSource = null
+
+  // Check for Power Cards (7 or 8)
+  if (card.rank === '7' || card.rank === '8') {
+      newState.turnPhase = 'power_peek_self'
+      newState.lastActionAt = new Date().toISOString()
+      return newState
+  }
+
   return endTurn(newState)
+}
+
+/**
+ * Resolves the "Peek Self" power (7/8).
+ */
+export function resolvePowerPeek(state: GameState, playerId: string, targetCardId: string): GameState {
+    if (!isValidMove(state, playerId)) throw new Error('Not your turn')
+    if (state.turnPhase !== 'power_peek_self') throw new Error('Invalid phase')
+
+    const newState = structuredClone(state)
+    const player = newState.players[playerId]
+    const card = player.hand.find(c => c.id === targetCardId)
+
+    if (!card) throw new Error('Card not found in your hand')
+
+    // Reveal the card to the player
+    if (!card.knownBy) card.knownBy = []
+    if (!card.knownBy.includes(playerId)) {
+        card.knownBy.push(playerId)
+    }
+
+    return endTurn(newState)
 }
 
 /**
@@ -139,7 +169,9 @@ export function swapCard(state: GameState, playerId: string, targetCardId: strin
   const oldCard = player.hand[targetIndex]
   
   // Refinement: Swapped card goes into hand FACE DOWN
-  player.hand[targetIndex] = { ...newState.drawnCard!, isFaceUp: false }
+  // It is known by the player who swapped it in (obviously)
+  const newHandCard = { ...newState.drawnCard!, isFaceUp: false, knownBy: [playerId] }
+  player.hand[targetIndex] = newHandCard
   
   // Old card goes to discard pile
   oldCard.isFaceUp = true

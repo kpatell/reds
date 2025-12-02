@@ -11,9 +11,10 @@ interface GameBoardProps {
     onDiscard?: () => void
     onSwap?: (cardId: string) => void
     onReady?: () => void
+    onResolvePower?: (targetCardId: string) => void
 }
 
-export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: GameBoardProps) {
+export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower }: GameBoardProps) {
     const { user } = useAuth()
 
     if (!user) {
@@ -30,6 +31,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
     const isMyTurn = gameState.currentTurnPlayerId === user.id
     const isActionPhase = gameState.turnPhase === 'action'
     const isPeekPhase = gameState.turnPhase === 'peek'
+    const isPowerPeekSelfPhase = gameState.turnPhase === 'power_peek_self'
 
     // Visibility Logic:
     // If it's my turn, I see the card.
@@ -62,7 +64,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
                     <PlayerHand
                         player={opponent}
                         isCurrentUser={false}
-                        className={isMyTurn && !isPeekPhase ? "opacity-50 transition-opacity" : ""}
+                        className={isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase ? "opacity-50 transition-opacity" : ""}
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                     />
                 ) : (
@@ -77,10 +79,10 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
 
                 {/* Draw Pile (Left) */}
                 <div
-                    onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && onDraw?.('deck')}
+                    onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && onDraw?.('deck')}
                     className={cn(
                         "relative group transition-transform",
-                        isMyTurn && !isActionPhase && !isPeekPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-80"
+                        isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-80"
                     )}
                 >
                     <div className="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 bg-[var(--color-primary)] rounded-xl border-2 border-white/10 shadow-lg flex items-center justify-center">
@@ -107,7 +109,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
                                     className="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 shadow-md"
                                 />
 
-                                {isMyTurn && (
+                                {isMyTurn && !isPowerPeekSelfPhase && (
                                     <div className="flex flex-col gap-1 w-full">
                                         <button
                                             onClick={() => onDiscard?.()}
@@ -124,10 +126,10 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
 
                 {/* Discard Pile (Right) */}
                 <div
-                    onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && onDraw?.('discard')}
+                    onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && onDraw?.('discard')}
                     className={cn(
                         "relative transition-transform",
-                        isMyTurn && !isActionPhase && !isPeekPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed"
+                        isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed"
                     )}
                 >
                     {topCard ? (
@@ -160,15 +162,27 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady }: Gam
                             </div>
                         )}
 
+                        {/* Power Peek Message */}
+                        {isPowerPeekSelfPhase && isMyTurn && (
+                            <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce">
+                                <div className="bg-purple-100 border border-purple-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-purple-700">
+                                    Choose a card to peek!
+                                </div>
+                                <div className="w-2 h-2 bg-purple-100 border-b border-r border-purple-300 absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
+                            </div>
+                        )}
+
                         <PlayerHand
                             player={currentPlayer}
                             isCurrentUser={true}
                             onCardClick={(card) => {
-                                if (gameState.drawnCard && isMyTurn && !isPeekPhase) {
+                                if (gameState.drawnCard && isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase) {
                                     onSwap?.(card.id)
+                                } else if (isPowerPeekSelfPhase && isMyTurn) {
+                                    onResolvePower?.(card.id)
                                 }
                             }}
-                            className={!isMyTurn && !isPeekPhase ? "opacity-75" : ""}
+                            className={!isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase ? "opacity-75" : ""}
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                         />
