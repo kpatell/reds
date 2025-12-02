@@ -45,9 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { error } = await supabase.auth.signInAnonymously()
         if (error) {
             console.error('Error signing in anonymously:', error)
-            // Fallback: If anonymous auth is disabled, try a random email/password (dev only)
-            // or alert the user. For now, just alert.
-            alert('Could not sign in. Please ensure Anonymous Auth is enabled in Supabase or implement Email Auth.')
+            throw error
         }
     }
 
