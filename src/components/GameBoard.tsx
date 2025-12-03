@@ -128,14 +128,13 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 />
 
                                 {/* Power Hint */}
-                                {isMyTurn && gameState.drawnCard && (
+                                {isMyTurn && gameState.drawnCard && ['7', '8', '9', '10'].includes(gameState.drawnCard.rank) && (
                                     <div className="absolute -right-32 top-1/2 -translate-y-1/2 w-28 bg-black/75 text-white text-[10px] p-2 rounded-lg backdrop-blur-sm pointer-events-none animate-in fade-in slide-in-from-left-2">
                                         <p className="font-bold mb-1 text-yellow-400">Power Card!</p>
                                         {gameState.drawnCard.rank === '7' && "Discard to PEEK at one of your own cards."}
                                         {gameState.drawnCard.rank === '8' && "Discard to PEEK at an opponent's card."}
                                         {gameState.drawnCard.rank === '9' && "Discard to SWAP a card without looking."}
                                         {gameState.drawnCard.rank === '10' && "Discard to LOOK then SWAP."}
-                                        {!['7', '8', '9', '10'].includes(gameState.drawnCard.rank) && "No special power."}
                                     </div>
                                 )}
 
@@ -227,10 +226,18 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                     onResolvePower?.(card.id)
                                 }
                             }}
-                            className={!isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase ? "opacity-75" : ""}
+                            // Gray out if:
+                            // 1. Not my turn (standard)
+                            // 2. Peek phase (standard)
+                            // 3. Power Peek Opponent phase (I should be looking at opponent's hand, not mine)
+                            // 4. Power Peek Viewing phase (I am looking at a specific card)
+                            className={!isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase ? "opacity-75" :
+                                isPowerPeekOpponentPhase && isMyTurn ? "opacity-25 grayscale pointer-events-none" : ""}
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                             viewingCardId={isPowerPeekViewingPhase ? currentPlayer?.viewingCardId : undefined}
+                            // If opponent is viewing one of MY cards, show it as being viewed
+                            beingViewedCardId={opponent?.viewingCardId}
                         />
 
                         {isPeekPhase && !currentPlayer.isReady && (

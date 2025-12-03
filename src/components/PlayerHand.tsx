@@ -14,7 +14,7 @@ interface PlayerHandProps {
 
 import { useAuth } from '@/components/AuthProvider'
 
-export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId }: PlayerHandProps & { viewingCardId?: string | null }) {
+export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null }) {
     const { user } = useAuth()
 
     return (
@@ -28,21 +28,30 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
                     // 2. Currently Viewing (Power Peek) -> Show
                     // 3. Known by me -> Show indicator (Ring), but NOT face up
                     const isViewing = viewingCardId === card.id
+                    const isBeingViewedByOpponent = beingViewedCardId === card.id
+
                     const shouldShowFaceUp = overrideFaceUp?.includes(index) || isViewing
 
                     return (
-                        <Card
-                            key={card.id}
-                            card={shouldShowFaceUp ? { ...card, isFaceUp: true } : card}
-                            onClick={() => onCardClick?.(card)}
-                            isSelected={selectedCardId === card.id}
-                            className={cn(
-                                !isCurrentUser && "cursor-default hover:translate-y-0",
-                                cardClassName,
-                                isKnownByMe && "ring-2 ring-blue-400/50", // Visual cue for known cards
-                                isViewing && "ring-4 ring-yellow-400 scale-105 z-10" // Highlight viewing card
+                        <div key={card.id} className="relative">
+                            {isBeingViewedByOpponent && (
+                                <div className="absolute -top-2 -right-2 z-20 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse shadow-sm border border-white">
+                                    👁️ Opponent Viewing
+                                </div>
                             )}
-                        />
+                            <Card
+                                card={shouldShowFaceUp ? { ...card, isFaceUp: true } : card}
+                                onClick={() => onCardClick?.(card)}
+                                isSelected={selectedCardId === card.id}
+                                className={cn(
+                                    !isCurrentUser && "cursor-default hover:translate-y-0",
+                                    cardClassName,
+                                    isKnownByMe && "ring-2 ring-blue-400/50", // Visual cue for known cards
+                                    isViewing && "ring-4 ring-yellow-400 scale-105 z-10", // Highlight viewing card
+                                    isBeingViewedByOpponent && "ring-4 ring-red-500/50" // Highlight card being viewed by opponent
+                                )}
+                            />
+                        </div>
                     )
                 })}
             </div>
