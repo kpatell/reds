@@ -84,6 +84,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         className={isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase ? "opacity-50 transition-opacity" : ""}
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                         viewingCardId={isPowerPeekViewingPhase ? currentPlayer?.viewingCardId : undefined}
+                        beingViewedCardId={opponent?.viewingCardId}
                     />
                 ) : (
                     <div className="text-[var(--color-text-muted)] animate-pulse rotate-180 text-sm">
@@ -133,8 +134,8 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                         <p className="font-bold mb-1 text-yellow-400">Power Card!</p>
                                         {gameState.drawnCard.rank === '7' && "Discard to PEEK at one of your own cards."}
                                         {gameState.drawnCard.rank === '8' && "Discard to PEEK at an opponent's card."}
-                                        {gameState.drawnCard.rank === '9' && "Discard to SWAP a card without looking."}
-                                        {gameState.drawnCard.rank === '10' && "Discard to LOOK then SWAP."}
+                                        {gameState.drawnCard.rank === '9' && "Blind Swap: Swap any one of your cards with an opponent's card without looking."}
+                                        {gameState.drawnCard.rank === '10' && "Look & Swap: See one of your cards and one opponent card, then decide if you want to swap."}
                                     </div>
                                 )}
 
@@ -232,7 +233,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                             // 3. Power Peek Opponent phase (I should be looking at opponent's hand, not mine)
                             // 4. Power Peek Viewing phase (I am looking at a specific card)
                             className={!isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase ? "opacity-75" :
-                                isPowerPeekOpponentPhase && isMyTurn ? "opacity-25 grayscale pointer-events-none" : ""}
+                                isPowerPeekOpponentPhase && isMyTurn ? "opacity-50 transition-opacity" : ""}
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                             viewingCardId={isPowerPeekViewingPhase ? currentPlayer?.viewingCardId : undefined}

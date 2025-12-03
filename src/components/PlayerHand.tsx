@@ -33,10 +33,12 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
                     const shouldShowFaceUp = overrideFaceUp?.includes(index) || isViewing
 
                     return (
-                        <div key={card.id} className="relative">
+                        <div key={card.id} className="relative group">
                             {isBeingViewedByOpponent && (
-                                <div className="absolute -top-2 -right-2 z-20 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse shadow-sm border border-white">
-                                    👁️ Opponent Viewing
+                                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/20 rounded-xl backdrop-blur-[1px] animate-pulse">
+                                    <div className="bg-white/90 rounded-full p-2 shadow-lg">
+                                        <div className="text-2xl">👁️</div>
+                                    </div>
                                 </div>
                             )}
                             <Card
@@ -46,9 +48,12 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
                                 className={cn(
                                     !isCurrentUser && "cursor-default hover:translate-y-0",
                                     cardClassName,
-                                    isKnownByMe && "ring-2 ring-blue-400/50", // Visual cue for known cards
-                                    isViewing && "ring-4 ring-yellow-400 scale-105 z-10", // Highlight viewing card
-                                    isBeingViewedByOpponent && "ring-4 ring-red-500/50" // Highlight card being viewed by opponent
+                                    // Blue ring = Memory Marker (I know this card)
+                                    isKnownByMe && !isViewing && "ring-2 ring-blue-400 ring-offset-2 ring-offset-[var(--color-background)]",
+                                    // Yellow ring = Active View (I am looking at this card right now)
+                                    isViewing && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[var(--color-background)] scale-105 z-10",
+                                    // Red ring = Opponent View (Opponent is looking at this card)
+                                    isBeingViewedByOpponent && "ring-4 ring-red-500 ring-offset-2 ring-offset-[var(--color-background)]"
                                 )}
                             />
                         </div>
