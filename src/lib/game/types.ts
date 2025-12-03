@@ -19,6 +19,7 @@ export interface PlayerState {
   isReady: boolean
   hasCalledReds: boolean
   roundsWon: number
+  viewingCardId?: string | null // ID of the card currently being peeked at by this player
 }
 
 export type TurnPhase = 'peek' | 'draw' | 'action' | 'discard_power' | 'power_peek_self' | 'power_peek_opponent' | 'power_peek_viewing'
@@ -35,5 +36,4 @@ export interface GameState {
   drawnCardSource?: 'deck' | 'discard' | null
   lastActionAt: string // ISO timestamp
   winnerId: string | null
-  viewingCardId?: string | null // ID of the card currently being peeked at
 }

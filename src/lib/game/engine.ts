@@ -157,7 +157,7 @@ export function resolvePowerPeekSelf(state: GameState, playerId: string, targetC
 
     // Transition to viewing phase
     newState.turnPhase = 'power_peek_viewing'
-    newState.viewingCardId = targetCardId
+    player.viewingCardId = targetCardId
     newState.lastActionAt = new Date().toISOString()
 
     return newState
@@ -194,7 +194,8 @@ export function resolvePowerPeekOpponent(state: GameState, playerId: string, tar
 
     // Transition to viewing phase
     newState.turnPhase = 'power_peek_viewing'
-    newState.viewingCardId = targetCardId
+    const player = newState.players[playerId]
+    player.viewingCardId = targetCardId
     newState.lastActionAt = new Date().toISOString()
 
     return newState
@@ -208,7 +209,8 @@ export function finishPeek(state: GameState, playerId: string): GameState {
     if (state.turnPhase !== 'power_peek_viewing') throw new Error('Invalid phase')
 
     const newState = structuredClone(state)
-    newState.viewingCardId = null
+    const player = newState.players[playerId]
+    player.viewingCardId = null
     return endTurn(newState)
 }
 

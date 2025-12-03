@@ -83,7 +83,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         }}
                         className={isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase ? "opacity-50 transition-opacity" : ""}
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
-                        viewingCardId={isPowerPeekViewingPhase ? gameState.viewingCardId : undefined}
+                        viewingCardId={isPowerPeekViewingPhase ? currentPlayer?.viewingCardId : undefined}
                     />
                 ) : (
                     <div className="text-[var(--color-text-muted)] animate-pulse rotate-180 text-sm">
@@ -126,6 +126,18 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                     card={{ ...gameState.drawnCard, isFaceUp: showDrawnCard }}
                                     className="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 shadow-md"
                                 />
+
+                                {/* Power Hint */}
+                                {isMyTurn && gameState.drawnCard && (
+                                    <div className="absolute -right-32 top-1/2 -translate-y-1/2 w-28 bg-black/75 text-white text-[10px] p-2 rounded-lg backdrop-blur-sm pointer-events-none animate-in fade-in slide-in-from-left-2">
+                                        <p className="font-bold mb-1 text-yellow-400">Power Card!</p>
+                                        {gameState.drawnCard.rank === '7' && "Discard to PEEK at one of your own cards."}
+                                        {gameState.drawnCard.rank === '8' && "Discard to PEEK at an opponent's card."}
+                                        {gameState.drawnCard.rank === '9' && "Discard to SWAP a card without looking."}
+                                        {gameState.drawnCard.rank === '10' && "Discard to LOOK then SWAP."}
+                                        {!['7', '8', '9', '10'].includes(gameState.drawnCard.rank) && "No special power."}
+                                    </div>
+                                )}
 
                                 {isMyTurn && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && (
                                     <div className="flex flex-col gap-1 w-full">
@@ -218,7 +230,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                             className={!isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase ? "opacity-75" : ""}
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
-                            viewingCardId={isPowerPeekViewingPhase ? gameState.viewingCardId : undefined}
+                            viewingCardId={isPowerPeekViewingPhase ? currentPlayer?.viewingCardId : undefined}
                         />
 
                         {isPeekPhase && !currentPlayer.isReady && (
