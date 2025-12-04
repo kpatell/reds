@@ -35,6 +35,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     const isPowerPeekSelfPhase = gameState.turnPhase === 'power_peek_self'
     const isPowerPeekOpponentPhase = gameState.turnPhase === 'power_peek_opponent'
     const isPowerPeekViewingPhase = gameState.turnPhase === 'power_peek_viewing'
+    const isPowerBlindSwapPhase = gameState.turnPhase === 'power_blind_swap'
 
     // Visibility Logic:
     // If it's my turn, I see the card.
@@ -63,10 +64,10 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
 
             {/* Opponent Area (Top) */}
             <div className="flex-1 flex items-end justify-center rotate-180 min-h-0 pb-4 relative">
-                {isPowerPeekOpponentPhase && isMyTurn && (
+                {(isPowerPeekOpponentPhase || (isPowerBlindSwapPhase && currentPlayer.swapSourceCardId)) && isMyTurn && (
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce rotate-180">
                         <div className="bg-blue-100 border border-blue-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-blue-700">
-                            Peek opponent's card!
+                            {isPowerBlindSwapPhase ? "Choose card to swap!" : "Peek opponent's card!"}
                         </div>
                         <div className="w-2 h-2 bg-blue-100 border-b border-r border-blue-300 absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
                     </div>
@@ -77,11 +78,11 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         player={opponent}
                         isCurrentUser={false}
                         onCardClick={(card) => {
-                            if (isPowerPeekOpponentPhase && isMyTurn) {
+                            if ((isPowerPeekOpponentPhase || isPowerBlindSwapPhase) && isMyTurn) {
                                 onResolvePower?.(card.id)
                             }
                         }}
-                        className={isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase ? "opacity-50 transition-opacity" : ""}
+                        className={isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase ? "opacity-50 transition-opacity" : ""}
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                         viewingCardId={isPowerPeekViewingPhase ? currentPlayer?.viewingCardId : undefined}
                         beingViewedCardId={opponent?.viewingCardId}
@@ -98,10 +99,10 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
 
                 {/* Draw Pile (Left) */}
                 <div
-                    onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && onDraw?.('deck')}
+                    onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && onDraw?.('deck')}
                     className={cn(
                         "relative group transition-transform",
-                        isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-80"
+                        isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-80"
                     )}
                 >
                     <div className="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 bg-[var(--color-primary)] rounded-xl border-2 border-white/10 shadow-lg flex items-center justify-center">
@@ -156,10 +157,10 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
 
                 {/* Discard Pile (Right) */}
                 <div
-                    onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && onDraw?.('discard')}
+                    onClick={() => isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && onDraw?.('discard')}
                     className={cn(
                         "relative transition-transform",
-                        isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed"
+                        isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase ? "cursor-pointer hover:scale-105" : "cursor-not-allowed"
                     )}
                 >
                     {topCard ? (
@@ -202,6 +203,18 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                             </div>
                         )}
 
+                        {/* Power Blind Swap Message */}
+                        {isPowerBlindSwapPhase && isMyTurn && (
+                            <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce">
+                                <div className="bg-orange-100 border border-orange-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-orange-700">
+                                    {currentPlayer.swapSourceCardId
+                                        ? "Now choose an opponent's card to swap!"
+                                        : "Choose one of your cards to swap!"}
+                                </div>
+                                <div className="w-2 h-2 bg-orange-100 border-b border-r border-orange-300 absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
+                            </div>
+                        )}
+
                         {/* Viewing Confirmation */}
                         {isPowerPeekViewingPhase && isMyTurn && (
                             <div className="absolute -top-20 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2">
@@ -221,19 +234,21 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                             player={currentPlayer}
                             isCurrentUser={true}
                             onCardClick={(card) => {
-                                if (gameState.drawnCard && isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase) {
+                                if (gameState.drawnCard && isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase) {
                                     onSwap?.(card.id)
-                                } else if (isPowerPeekSelfPhase && isMyTurn) {
+                                } else if ((isPowerPeekSelfPhase || isPowerBlindSwapPhase) && isMyTurn) {
                                     onResolvePower?.(card.id)
                                 }
                             }}
+                            selectedCardId={isPowerBlindSwapPhase ? currentPlayer.swapSourceCardId : undefined}
                             // Gray out if:
                             // 1. Not my turn (standard)
                             // 2. Peek phase (standard)
                             // 3. Power Peek Opponent phase (I should be looking at opponent's hand, not mine)
                             // 4. Power Peek Viewing phase (I am looking at a specific card)
-                            className={!isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase ? "opacity-75" :
-                                isPowerPeekOpponentPhase && isMyTurn ? "opacity-50 transition-opacity" : ""}
+                            // 5. Power Blind Swap (Step 2): If I have selected my card, I should be looking at opponent's hand
+                            className={!isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase ? "opacity-75" :
+                                (isPowerPeekOpponentPhase && isMyTurn) || (isPowerBlindSwapPhase && isMyTurn && currentPlayer.swapSourceCardId) ? "opacity-50 transition-opacity" : ""}
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                             viewingCardId={isPowerPeekViewingPhase ? currentPlayer?.viewingCardId : undefined}

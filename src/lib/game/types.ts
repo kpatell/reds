@@ -19,10 +19,11 @@ export interface PlayerState {
   isReady: boolean
   hasCalledReds: boolean
   roundsWon: number
-  viewingCardId?: string | null // ID of the card currently being peeked at by this player
+  viewingCardId?: string | null // ID of the card currently being viewed (Power 7/8)
+  swapSourceCardId?: string | null // ID of own card selected for swap (Power 9/10)
 }
 
-export type TurnPhase = 'peek' | 'draw' | 'action' | 'discard_power' | 'power_peek_self' | 'power_peek_opponent' | 'power_peek_viewing'
+export type TurnPhase = 'peek' | 'draw' | 'action' | 'discard_power' | 'power_peek_self' | 'power_peek_opponent' | 'power_peek_viewing' | 'power_blind_swap'
 
 export interface GameState {
   id: string
