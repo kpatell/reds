@@ -1,11 +1,16 @@
 import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '@/components/AuthProvider'
 import { useGameState } from '@/hooks/useGameState'
 import { GameBoard } from '@/components/GameBoard'
 import { supabase } from '@/lib/supabase'
-import { initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady, resolvePowerPeekSelf, resolvePowerPeekOpponent, finishPeek } from '@/lib/game/engine'
+import {
+    initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady,
+    resolvePowerPeekSelf, resolvePowerPeekOpponent, finishPeek,
+    resolvePowerLookSwapDecision
+} from '@/lib/game/engine'
 import type { Database, Json } from '@/types/supabase'
 
 
@@ -202,14 +207,23 @@ export default function Game() {
         }
     }
 
-    const handleFinishPeek = async () => {
-        if (!gameState || !user) return
-
+    async function handleFinishPeek() {
+        if (!gameId || !user) return
         try {
-            const newGameState = finishPeek(gameState, user.id)
-            await handleGameUpdate(newGameState)
-        } catch (error: any) {
-            console.error('Error finishing peek:', error)
+            const newState = finishPeek(gameState!, user.id)
+            await handleGameUpdate(newState)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to finish peek')
+        }
+    }
+
+    async function handlePowerLookSwapDecision(action: 'swap' | 'keep') {
+        if (!gameId || !user) return
+        try {
+            const newState = resolvePowerLookSwapDecision(gameState!, user.id, action)
+            await handleGameUpdate(newState)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to resolve decision')
         }
     }
 
@@ -235,6 +249,7 @@ export default function Game() {
                 onReady={handleReady}
                 onResolvePower={handleResolvePower}
                 onFinishPeek={handleFinishPeek}
+                onPowerLookSwapDecision={handlePowerLookSwapDecision}
             />
         </div>
     )

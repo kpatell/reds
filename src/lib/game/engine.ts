@@ -121,7 +121,7 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
   const source = newState.drawnCardSource
   newState.drawnCardSource = null
 
-  // Check for Power Cards (7 or 8) - ONLY if drawn from DECK
+  // Check for Power Cards (7 or 8 or 9 or 10) - ONLY if drawn from DECK
   if (source === 'deck') {
       if (card.rank === '7') {
           newState.turnPhase = 'power_peek_self'
@@ -137,6 +137,12 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
 
       if (card.rank === '9') {
           newState.turnPhase = 'power_blind_swap'
+          newState.lastActionAt = new Date().toISOString()
+          return newState
+      }
+
+      if (card.rank === '10') {
+          newState.turnPhase = 'power_look_swap'
           newState.lastActionAt = new Date().toISOString()
           return newState
       }
@@ -183,8 +189,6 @@ export function resolvePowerBlindSwap(state: GameState, playerId: string, target
 
     if (!opponentId || opponentCardIndex === -1) {
         // Allow changing own selection if they click their own card again?
-        // For now, enforce clicking opponent card.
-        // Or maybe reset if they click their own card?
         const myCard = player.hand.find(c => c.id === targetCardId)
         if (myCard) {
             player.swapSourceCardId = targetCardId // Change selection
@@ -197,26 +201,132 @@ export function resolvePowerBlindSwap(state: GameState, playerId: string, target
     const opponent = newState.players[opponentId]
     const myCardIndex = player.hand.findIndex(c => c.id === player.swapSourceCardId)
     
-    if (myCardIndex === -1) throw new Error('Selected source card not found') // Should not happen
+    if (myCardIndex === -1) throw new Error('Selected source card not found')
 
     const myCard = player.hand[myCardIndex]
     const opponentCard = opponent.hand[opponentCardIndex]
 
     // Perform Swap
-    // Maintain face-up state? Or force face-down?
-    // Rules usually say "keep orientation" or "face down".
-    // Let's assume they keep their orientation but ownership changes.
-    // AND knownBy should be updated?
-    // If I swap blindly, I don't know what I got.
-    // If I give away a card I knew, I still know it (but it's in their hand).
-    // Let's just swap the objects.
-    
     player.hand[myCardIndex] = opponentCard
     opponent.hand[opponentCardIndex] = myCard
 
     // Clear selection
     player.swapSourceCardId = null
     
+    return endTurn(newState)
+}
+
+/**
+ * Resolves the "Look & Swap" power (10).
+ * Step 1: Select own card (sets swapSourceCardId).
+ * Step 2: Select opponent card (sets viewingCardId and transitions to decision).
+ */
+export function resolvePowerLookSwap(state: GameState, playerId: string, targetCardId: string): GameState {
+    if (!isValidMove(state, playerId)) throw new Error('Not your turn')
+    if (state.turnPhase !== 'power_look_swap') throw new Error('Invalid phase')
+
+    const newState = structuredClone(state)
+    const player = newState.players[playerId]
+
+    // Step 1: Select own card
+    if (!player.swapSourceCardId) {
+        const card = player.hand.find(c => c.id === targetCardId)
+        if (!card) throw new Error('Must select one of your own cards first')
+        
+        // Reveal my card to ME (add to knownBy)
+        if (!card.knownBy) card.knownBy = []
+        if (!card.knownBy.includes(playerId)) card.knownBy.push(playerId)
+
+        player.swapSourceCardId = targetCardId
+        newState.lastActionAt = new Date().toISOString()
+        return newState
+    }
+
+    // Step 2: Select opponent card
+    let opponentId: string | undefined
+    let opponentCard: Card | undefined
+
+    for (const pid of Object.keys(newState.players)) {
+        if (pid === playerId) continue
+        const card = newState.players[pid].hand.find(c => c.id === targetCardId)
+        if (card) {
+            opponentId = pid
+            opponentCard = card
+            break
+        }
+    }
+
+    if (!opponentId || !opponentCard) {
+        // Allow changing own selection
+        const myCard = player.hand.find(c => c.id === targetCardId)
+        if (myCard) {
+            // Reveal new card
+            if (!myCard.knownBy) myCard.knownBy = []
+            if (!myCard.knownBy.includes(playerId)) myCard.knownBy.push(playerId)
+            
+            player.swapSourceCardId = targetCardId
+            newState.lastActionAt = new Date().toISOString()
+            return newState
+        }
+        throw new Error('Must select an opponent card')
+    }
+
+    // Reveal opponent card to ME
+    if (!opponentCard.knownBy) opponentCard.knownBy = []
+    if (!opponentCard.knownBy.includes(playerId)) opponentCard.knownBy.push(playerId)
+
+    // Set viewing card and transition to decision
+    player.viewingCardId = targetCardId
+    newState.turnPhase = 'power_look_swap_decision'
+    newState.lastActionAt = new Date().toISOString()
+
+    return newState
+}
+
+/**
+ * Resolves the decision for "Look & Swap" (10).
+ */
+export function resolvePowerLookSwapDecision(state: GameState, playerId: string, action: 'swap' | 'keep'): GameState {
+    if (!isValidMove(state, playerId)) throw new Error('Not your turn')
+    if (state.turnPhase !== 'power_look_swap_decision') throw new Error('Invalid phase')
+
+    const newState = structuredClone(state)
+    const player = newState.players[playerId]
+    
+    if (!player.swapSourceCardId || !player.viewingCardId) throw new Error('Invalid state for decision')
+
+    if (action === 'swap') {
+        const myCardIndex = player.hand.findIndex(c => c.id === player.swapSourceCardId)
+        
+        // Find opponent card
+        let opponentId: string | undefined
+        let opponentCardIndex: number = -1
+
+        for (const pid of Object.keys(newState.players)) {
+            if (pid === playerId) continue
+            const idx = newState.players[pid].hand.findIndex(c => c.id === player.viewingCardId)
+            if (idx !== -1) {
+                opponentId = pid
+                opponentCardIndex = idx
+                break
+            }
+        }
+
+        if (myCardIndex !== -1 && opponentId && opponentCardIndex !== -1) {
+            const opponent = newState.players[opponentId]
+            const myCard = player.hand[myCardIndex]
+            const opponentCard = opponent.hand[opponentCardIndex]
+
+            // Perform Swap
+            player.hand[myCardIndex] = opponentCard
+            opponent.hand[opponentCardIndex] = myCard
+        }
+    }
+
+    // Clear state
+    player.swapSourceCardId = null
+    player.viewingCardId = null
+
     return endTurn(newState)
 }
 
