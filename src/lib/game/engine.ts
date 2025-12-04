@@ -118,10 +118,11 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
       return newState
   }
   
+  const source = newState.drawnCardSource
   newState.drawnCardSource = null
 
   // Check for Power Cards (7 or 8) - ONLY if drawn from DECK
-  if (newState.drawnCardSource === 'deck') {
+  if (source === 'deck') {
       if (card.rank === '7') {
           newState.turnPhase = 'power_peek_self'
           newState.lastActionAt = new Date().toISOString()
