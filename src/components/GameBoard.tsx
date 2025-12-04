@@ -133,7 +133,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 />
 
                                 {/* Power Hint */}
-                                {isMyTurn && gameState.drawnCard && ['7', '8', '9', '10'].includes(gameState.drawnCard.rank) && (
+                                {isMyTurn && gameState.drawnCard && gameState.drawnCardSource === 'deck' && ['7', '8', '9', '10'].includes(gameState.drawnCard.rank) && (
                                     <div className="absolute -right-32 top-1/2 -translate-y-1/2 w-28 bg-black/75 text-white text-[10px] p-2 rounded-lg backdrop-blur-sm pointer-events-none animate-in fade-in slide-in-from-left-2">
                                         <p className="font-bold mb-1 text-yellow-400">Power Card!</p>
                                         {gameState.drawnCard.rank === '7' && "Discard to PEEK at one of your own cards."}

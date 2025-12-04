@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid'
 import type { Card, Deck, Rank, Suit } from './types'
 
 export const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs']
@@ -28,7 +27,7 @@ export function createDeck(): Deck {
   for (const suit of SUITS) {
     for (const rank of RANKS) {
       deck.push({
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         suit,
         rank,
         value: getCardValue(rank, suit),
@@ -41,7 +40,7 @@ export function createDeck(): Deck {
   // Add 2 Jokers
   for (let i = 0; i < 2; i++) {
     deck.push({
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       suit: 'joker',
       rank: 'Joker',
       value: 0,
