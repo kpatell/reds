@@ -12,17 +12,14 @@ interface PlayerHandProps {
     cardClassName?: string
 }
 
-import { useAuth } from '@/components/AuthProvider'
+
 
 export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null }) {
-    const { user } = useAuth()
 
     return (
         <div className={cn("flex flex-col items-center gap-2", className)}>
             <div className="grid grid-cols-2 gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
                 {player.hand.map((card, index) => {
-                    const isKnownByMe = user && card.knownBy?.includes(user.id)
-
                     // Logic:
                     // 1. Override (Peek Phase) -> Show
                     // 2. Currently Viewing (Power Peek) -> Show
@@ -48,8 +45,6 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
                                 className={cn(
                                     !isCurrentUser && "cursor-default hover:translate-y-0",
                                     cardClassName,
-                                    // Blue ring = Memory Marker (I know this card)
-                                    isKnownByMe && !isViewing && "ring-2 ring-blue-400 ring-offset-2 ring-offset-[var(--color-background)]",
                                     // Yellow ring = Active View (I am looking at this card right now)
                                     isViewing && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[var(--color-background)] scale-105 z-10",
                                     // Red ring = Opponent View (Opponent is looking at this card)

@@ -120,17 +120,19 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
   
   newState.drawnCardSource = null
 
-  // Check for Power Cards (7 or 8)
-  if (card.rank === '7') {
-      newState.turnPhase = 'power_peek_self'
-      newState.lastActionAt = new Date().toISOString()
-      return newState
-  }
-  
-  if (card.rank === '8') {
-      newState.turnPhase = 'power_peek_opponent'
-      newState.lastActionAt = new Date().toISOString()
-      return newState
+  // Check for Power Cards (7 or 8) - ONLY if drawn from DECK
+  if (newState.drawnCardSource === 'deck') {
+      if (card.rank === '7') {
+          newState.turnPhase = 'power_peek_self'
+          newState.lastActionAt = new Date().toISOString()
+          return newState
+      }
+      
+      if (card.rank === '8') {
+          newState.turnPhase = 'power_peek_opponent'
+          newState.lastActionAt = new Date().toISOString()
+          return newState
+      }
   }
 
   return endTurn(newState)
