@@ -5,11 +5,12 @@ import { toast } from 'sonner'
 import { useAuth } from '@/components/AuthProvider'
 import { useGameState } from '@/hooks/useGameState'
 import { GameBoard } from '@/components/GameBoard'
+import { ScaleContainer } from '@/components/ScaleContainer'
 import { supabase } from '@/lib/supabase'
 import {
     initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady,
     resolvePowerPeekSelf, resolvePowerPeekOpponent, finishPeek,
-    resolvePowerLookSwapDecision
+    resolvePowerLookSwapDecision, resolvePowerBlindSwap, resolvePowerLookSwap
 } from '@/lib/game/engine'
 import type { Database, Json } from '@/types/supabase'
 
@@ -194,6 +195,10 @@ export default function Game() {
                 newGameState = resolvePowerPeekSelf(gameState, user.id, targetCardId)
             } else if (gameState.turnPhase === 'power_peek_opponent') {
                 newGameState = resolvePowerPeekOpponent(gameState, user.id, targetCardId)
+            } else if (gameState.turnPhase === 'power_blind_swap') {
+                newGameState = resolvePowerBlindSwap(gameState, user.id, targetCardId)
+            } else if (gameState.turnPhase === 'power_look_swap') {
+                newGameState = resolvePowerLookSwap(gameState, user.id, targetCardId)
             } else {
                 return
             }
@@ -240,17 +245,19 @@ export default function Game() {
     }
 
     return (
-        <div className="min-h-screen bg-[var(--color-background)]">
-            <GameBoard
-                gameState={gameState}
-                onDraw={handleDraw}
-                onDiscard={handleDiscard}
-                onSwap={handleSwap}
-                onReady={handleReady}
-                onResolvePower={handleResolvePower}
-                onFinishPeek={handleFinishPeek}
-                onPowerLookSwapDecision={handlePowerLookSwapDecision}
-            />
+        <div className="min-h-screen bg-[var(--color-background)] overflow-hidden">
+            <ScaleContainer>
+                <GameBoard
+                    gameState={gameState}
+                    onDraw={handleDraw}
+                    onDiscard={handleDiscard}
+                    onSwap={handleSwap}
+                    onReady={handleReady}
+                    onResolvePower={handleResolvePower}
+                    onFinishPeek={handleFinishPeek}
+                    onPowerLookSwapDecision={handlePowerLookSwapDecision}
+                />
+            </ScaleContainer>
         </div>
     )
 }
