@@ -238,6 +238,7 @@ export function resolvePowerLookSwap(state: GameState, playerId: string, targetC
         if (!card.knownBy.includes(playerId)) card.knownBy.push(playerId)
 
         player.swapSourceCardId = targetCardId
+        player.viewingCardId = targetCardId // Reveal to self
         newState.lastActionAt = new Date().toISOString()
         return newState
     }
@@ -276,8 +277,8 @@ export function resolvePowerLookSwap(state: GameState, playerId: string, targetC
     if (!opponentCard.knownBy.includes(playerId)) opponentCard.knownBy.push(playerId)
 
     // Set viewing card and transition to decision
-    player.viewingCardId = targetCardId
-    newState.turnPhase = 'power_look_swap_decision'
+    newState.turnPhase = 'power_look_swap_decision' // Transition to decision phase
+    player.viewingCardId = targetCardId // Reveal opponent card
     newState.lastActionAt = new Date().toISOString()
 
     return newState

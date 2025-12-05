@@ -87,7 +87,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         }}
                         className={isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase ? "opacity-50 transition-opacity" : ""}
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
-                        viewingCardId={isPowerPeekViewingPhase || isPowerLookSwapDecisionPhase ? currentPlayer?.viewingCardId : undefined}
+                        viewingCardId={currentPlayer?.viewingCardId}
                         beingViewedCardId={opponent?.viewingCardId}
                     />
                 ) : (
@@ -291,7 +291,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 (isPowerPeekOpponentPhase && isMyTurn) || ((isPowerBlindSwapPhase || isPowerLookSwapPhase) && isMyTurn && currentPlayer.swapSourceCardId) ? "opacity-50 transition-opacity" : ""}
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
-                            viewingCardId={isPowerPeekViewingPhase || isPowerLookSwapDecisionPhase ? currentPlayer?.viewingCardId : undefined}
+                            viewingCardId={isPowerLookSwapDecisionPhase ? currentPlayer.swapSourceCardId : currentPlayer.viewingCardId}
                             // If opponent is viewing one of MY cards, show it as being viewed
                             beingViewedCardId={opponent?.viewingCardId}
                         />
