@@ -14,7 +14,7 @@ interface PlayerHandProps {
 
 
 
-export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null }) {
+export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId, isInteractive }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null, isInteractive?: boolean }) {
 
     return (
         <div className={cn("flex flex-col items-center gap-2", className)}>
@@ -43,7 +43,7 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
                                 onClick={() => onCardClick?.(card)}
                                 isSelected={selectedCardId === card.id}
                                 className={cn(
-                                    !isCurrentUser && "cursor-default hover:translate-y-0",
+                                    (!isCurrentUser && !isInteractive) && "cursor-default hover:translate-y-0",
                                     cardClassName,
                                     // Yellow ring = Active View (I am looking at this card right now)
                                     isViewing && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[var(--color-background)] scale-105 z-10",

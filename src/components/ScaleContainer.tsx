@@ -59,8 +59,7 @@ export function ScaleContainer({ children, className }: ScaleContainerProps) {
                     transformOrigin: 'center center',
                     width: '100%',
                     maxWidth: '1152px', // max-w-6xl
-                    height: '100%',
-                    maxHeight: '800px', // approximate height of game board
+                    height: '1000px', // Fixed height for scaling context
                     display: 'flex',
                     flexDirection: 'column'
                 }}
