@@ -85,7 +85,8 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 onResolvePower?.(card.id)
                             }
                         }}
-                        className={isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase ? "opacity-50 transition-opacity" : ""}
+                        className={isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase ? "opacity-50 transition-opacity" :
+                            (isPowerPeekSelfPhase && isMyTurn) ? "opacity-50 transition-opacity" : ""}
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                         viewingCardId={currentPlayer?.viewingCardId}
                         beingViewedCardId={opponent?.viewingCardId}

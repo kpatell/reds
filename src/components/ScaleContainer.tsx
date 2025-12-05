@@ -17,16 +17,17 @@ export function ScaleContainer({ children, className }: ScaleContainerProps) {
             const windowWidth = window.innerWidth
 
             // Target dimensions (based on max-w-6xl and reasonable height)
-            const targetWidth = 1152 // max-w-6xl
-            const targetHeight = 800 // reasonable minimum height for the game board
+            // Target dimensions (based on max-w-5xl for better fit on laptops)
+            const targetWidth = 1024
+            const targetHeight = 768
 
             // Calculate scale
             const scaleX = windowWidth / targetWidth
             const scaleY = windowHeight / targetHeight
 
             // Use the smaller scale to fit both dimensions, but cap at 1 (don't upscale too much)
-            // Also ensure we don't scale down too aggressively on mobile (min 0.5 maybe?)
-            const newScale = Math.min(Math.min(scaleX, scaleY), 1)
+            // Ensure we don't scale down too aggressively (min 0.6)
+            const newScale = Math.max(Math.min(Math.min(scaleX, scaleY), 1), 0.6)
 
             // On mobile portrait, we might want to be more lenient or use a different logic
             // But for now, fitting to screen is the goal.
