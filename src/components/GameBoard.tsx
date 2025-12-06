@@ -14,9 +14,10 @@ interface GameBoardProps {
     onResolvePower?: (targetCardId: string) => void
     onFinishPeek?: () => void
     onPowerLookSwapDecision?: (action: 'swap' | 'keep') => void
+    onSkipPower?: () => void
 }
 
-export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision }: GameBoardProps) {
+export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower }: GameBoardProps) {
     const { user } = useAuth()
 
     if (!user) {
@@ -53,27 +54,20 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
         isPowerActionStep2
     )
 
-    const isMyHandInteractive = isMyTurn && (
-        !isPowerPeekOpponentPhase &&
-        !isPowerPeekViewingPhase &&
-        !(isPowerBlindSwapPhase && isPowerActionStep2)
-        // Note: For Power Look Swap Step 2, My Hand STAYS interactive/visible per user request
-    )
-
     return (
-        <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-4 gap-8 overflow-hidden relative justify-between">
+        <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-8 gap-12 relative justify-between">
             {/* Header: Leave Game & Turn Info */}
-            <div className="flex justify-between items-center z-20 px-2 absolute top-4 left-4 right-4">
+            <div className="flex justify-between items-center z-20 px-4 absolute top-6 left-6 right-6">
                 <a href="/" className="text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex items-center gap-2">
                     ← Leave
                 </a>
 
                 {!isPeekPhase && (
                     <div className={cn(
-                        "px-3 py-1 rounded-full font-bold text-xs transition-all duration-300",
+                        "px-4 py-2 rounded-full font-bold text-sm transition-all duration-300 shadow-md",
                         isMyTurn
                             ? "bg-[var(--color-primary)] text-white"
-                            : "bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)]"
+                            : "bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)] opacity-80"
                     )}>
                         {isMyTurn ? "YOUR TURN" : "OPPONENT'S TURN"}
                     </div>
@@ -81,7 +75,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             </div>
 
             {/* Opponent Area (Top) */}
-            <div className="flex-1 flex items-end justify-center rotate-180 min-h-0 pb-4 relative mt-16">
+            <div className="flex-1 flex items-end justify-center rotate-180 min-h-0 pb-8 relative mt-20">
                 {(isPowerPeekOpponentPhase || (isPowerBlindSwapPhase && currentPlayer.swapSourceCardId) || (isPowerLookSwapPhase && currentPlayer.swapSourceCardId)) && isMyTurn && (
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce rotate-180">
                         <div className="bg-blue-100 border border-blue-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-blue-700">
@@ -101,7 +95,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 onResolvePower?.(card.id)
                             }
                         }}
-                        className={!isOpponentHandInteractive ? "opacity-50 transition-opacity" : ""}
+                        // Removed opacity logic as requested
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                         viewingCardId={currentPlayer?.viewingCardId}
                         beingViewedCardId={opponent?.viewingCardId}
@@ -114,7 +108,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             </div>
 
             {/* Center Area (Decks & Drawn Card) */}
-            <div className="flex-none flex items-center justify-between px-8 sm:px-16 md:px-32 py-2 relative w-full z-10 max-w-4xl mx-auto">
+            <div className="flex-none flex items-center justify-between px-8 sm:px-16 md:px-32 py-4 relative w-full z-10 max-w-4xl mx-auto">
 
                 {/* Draw Pile (Left) */}
                 <div
@@ -130,7 +124,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                     {/* Stack effect */}
                     <div className="absolute top-1 left-1 w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 bg-[var(--color-primary)] rounded-xl -z-10 border-2 border-white/10"></div>
                     <div className="absolute top-2 left-2 w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40 bg-[var(--color-primary)] rounded-xl -z-20 border-2 border-white/10"></div>
-                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
                         Deck
                     </div>
                 </div>
@@ -192,16 +186,16 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                             Empty
                         </div>
                     )}
-                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
                         Discard
                     </div>
                 </div>
             </div>
 
             {/* Player Area (Bottom) */}
-            <div className="flex-1 flex flex-col items-center justify-end gap-2 min-h-0 relative pb-4">
+            <div className="flex-1 flex flex-col items-center justify-end gap-4 min-h-0 relative pb-8">
                 {currentPlayer && (
-                    <div className="flex flex-col items-center gap-2 relative">
+                    <div className="flex flex-col items-center gap-4 relative">
                         {/* Peek Message - Positioned relative to hand */}
                         {isPeekPhase && !currentPlayer.isReady && (
                             <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce">
@@ -224,13 +218,22 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
 
                         {/* Power Blind Swap Message */}
                         {isPowerBlindSwapPhase && isMyTurn && (
-                            <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce">
-                                <div className="bg-orange-100 border border-orange-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-orange-700">
+                            <div className="absolute -top-20 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 w-max animate-in fade-in slide-in-from-bottom-2">
+                                <div className="bg-orange-100 border border-orange-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-orange-700 animate-bounce">
                                     {currentPlayer.swapSourceCardId
                                         ? "Now choose an opponent's card to swap!"
                                         : "Choose one of your cards to swap!"}
                                 </div>
-                                <div className="w-2 h-2 bg-orange-100 border-b border-r border-orange-300 absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
+
+                                {/* Skip Button */}
+                                {!currentPlayer.swapSourceCardId && onSkipPower && (
+                                    <button
+                                        onClick={() => onSkipPower?.()}
+                                        className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-xs font-bold transition-colors shadow-sm border border-gray-200"
+                                    >
+                                        Skip Power
+                                    </button>
+                                )}
                             </div>
                         )}
 
@@ -295,15 +298,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 }
                             }}
                             selectedCardId={isPowerBlindSwapPhase || isPowerLookSwapPhase || isPowerLookSwapDecisionPhase ? currentPlayer.swapSourceCardId : undefined}
-                            // Gray out if:
-                            // 1. Not my turn (standard)
-                            // 2. Peek phase (standard)
-                            // 3. Power Peek Opponent phase (I should be looking at opponent's hand, not mine)
-                            // 4. Power Peek Viewing phase (I am looking at a specific card)
-                            // 5. Power Blind Swap (Step 2): If I have selected my card, I should be looking at opponent's hand
-                            // 6. Power Look Swap (Step 2): If I have selected my card, I should be looking at opponent's hand
-                            // 7. Power Look Swap Decision: I am viewing both, so don't gray out
-                            className={!isMyHandInteractive ? "opacity-50 transition-opacity" : ""}
+                            // Removed opacity logic as requested
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                             viewingCardId={isPowerLookSwapDecisionPhase ? currentPlayer.swapSourceCardId : currentPlayer.viewingCardId}

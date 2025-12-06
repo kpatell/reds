@@ -213,6 +213,12 @@ export function resolvePowerBlindSwap(state: GameState, playerId: string, target
     // Clear selection
     player.swapSourceCardId = null
     
+    newState.lastGameAction = {
+        playerId,
+        actionType: 'power_blind_swap',
+        description: 'Swapped cards (Blind Swap)'
+    }
+    
     return endTurn(newState)
 }
 
@@ -328,6 +334,12 @@ export function resolvePowerLookSwapDecision(state: GameState, playerId: string,
     player.swapSourceCardId = null
     player.viewingCardId = null
 
+    newState.lastGameAction = {
+        playerId,
+        actionType: 'power_look_swap',
+        description: action === 'swap' ? 'Swapped cards (Look & Swap)' : 'Kept own card (Look & Swap)'
+    }
+
     return endTurn(newState)
 }
 
@@ -436,7 +448,32 @@ export function swapCard(state: GameState, playerId: string, targetCardId: strin
   
   newState.drawnCard = null
   newState.drawnCardSource = null
+  
+  newState.lastGameAction = {
+      playerId,
+      actionType: 'swap',
+      description: 'Swapped drawn card with hand'
+  }
+
   return endTurn(newState)
+}
+
+/**
+ * Skips the current power phase and ends the turn.
+ * Valid for Power 9 (Blind Swap) as requested.
+ */
+export function skipPower(state: GameState, playerId: string): GameState {
+    if (!isValidMove(state, playerId)) throw new Error('Not your turn')
+    // Valid phases to skip: Blind Swap, maybe others if needed?
+    if (state.turnPhase !== 'power_blind_swap') throw new Error('Cannot skip this phase')
+
+    const newState = structuredClone(state)
+    newState.lastGameAction = {
+        playerId,
+        actionType: 'power_skip',
+        description: 'Skipped power action'
+    }
+    return endTurn(newState)
 }
 
 /**

@@ -45,5 +45,10 @@ export interface GameState {
   drawnCard: Card | null // The card currently drawn by the active player
   drawnCardSource?: 'deck' | 'discard' | null
   lastActionAt: string // ISO timestamp
+  lastGameAction?: {
+      playerId: string;
+      actionType: 'draw' | 'discard' | 'swap' | 'power_peek_self' | 'power_peek_opponent' | 'power_blind_swap' | 'power_look_swap' | 'power_skip';
+      description: string;
+  } | null
   winnerId: string | null
 }

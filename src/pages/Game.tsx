@@ -232,6 +232,40 @@ export default function Game() {
         }
     }
 
+    async function handleSkipPower() {
+        if (!gameId || !user) return
+        try {
+            const { skipPower } = await import('@/lib/game/engine') // Dynamic import to ensure latest engine
+            const newState = skipPower(gameState!, user.id)
+            await handleGameUpdate(newState)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to skip power')
+        }
+    }
+
+    // Effect for notifications based on lastAction
+    useEffect(() => {
+        if (!gameState?.lastGameAction) return
+
+        const action = gameState.lastGameAction
+        // Only show if the action happened recently (e.g. within 5 seconds) 
+        // OR simply rely on the fact that gameState updates trigger this.
+        // But we want to avoid showing old toasts on page load.
+        // We can check the timestamp diff.
+
+        const actionTime = new Date(gameState.lastActionAt).getTime()
+        const now = new Date().getTime()
+        if (now - actionTime > 5000) return
+
+        // If I am the one who did the action, maybe I don't need a toast?
+        // But the user requested "opponent should also know".
+        // So we show it to everyone.
+
+        if (action.actionType === 'swap' || action.actionType === 'power_blind_swap' || action.actionType === 'power_look_swap') {
+            toast.info(action.description)
+        }
+    }, [gameState?.lastActionAt])
+
     if (!gameState) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen gap-4">
@@ -256,6 +290,7 @@ export default function Game() {
                     onResolvePower={handleResolvePower}
                     onFinishPeek={handleFinishPeek}
                     onPowerLookSwapDecision={handlePowerLookSwapDecision}
+                    onSkipPower={handleSkipPower}
                 />
             </ScaleContainer>
         </div>
