@@ -26,8 +26,8 @@ export function ScaleContainer({ children, className }: ScaleContainerProps) {
             const scaleY = windowHeight / targetHeight
 
             // Use the smaller scale to fit both dimensions, but cap at 1 (don't upscale too much)
-            // Ensure we don't scale down too aggressively (min 0.6)
-            const newScale = Math.max(Math.min(Math.min(scaleX, scaleY), 1), 0.6)
+            // Ensure we don't scale down too aggressively (min 0.4 now to allow fitting on small screens)
+            const newScale = Math.max(Math.min(Math.min(scaleX, scaleY), 1), 0.4)
 
             // On mobile portrait, we might want to be more lenient or use a different logic
             // But for now, fitting to screen is the goal.

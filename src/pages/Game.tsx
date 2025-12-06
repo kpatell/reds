@@ -20,6 +20,20 @@ export default function Game() {
     const { user, signInAnonymously, loading: authLoading } = useAuth()
     const { gameState, loading: gameLoading, error } = useGameState(gameId!)
 
+    // Effect for notifications based on lastAction
+    useEffect(() => {
+        if (!gameState?.lastGameAction) return
+
+        const action = gameState.lastGameAction
+        const actionTime = new Date(gameState.lastActionAt).getTime()
+        const now = new Date().getTime()
+        if (now - actionTime > 5000) return
+
+        if (action.actionType === 'swap' || action.actionType === 'power_blind_swap' || action.actionType === 'power_look_swap') {
+            toast.info(action.description)
+        }
+    }, [gameState?.lastActionAt])
+
     // Auto-sign in for guests accessing via link
     useEffect(() => {
         if (!authLoading && !user) {
@@ -242,29 +256,6 @@ export default function Game() {
             toast.error(error instanceof Error ? error.message : 'Failed to skip power')
         }
     }
-
-    // Effect for notifications based on lastAction
-    useEffect(() => {
-        if (!gameState?.lastGameAction) return
-
-        const action = gameState.lastGameAction
-        // Only show if the action happened recently (e.g. within 5 seconds) 
-        // OR simply rely on the fact that gameState updates trigger this.
-        // But we want to avoid showing old toasts on page load.
-        // We can check the timestamp diff.
-
-        const actionTime = new Date(gameState.lastActionAt).getTime()
-        const now = new Date().getTime()
-        if (now - actionTime > 5000) return
-
-        // If I am the one who did the action, maybe I don't need a toast?
-        // But the user requested "opponent should also know".
-        // So we show it to everyone.
-
-        if (action.actionType === 'swap' || action.actionType === 'power_blind_swap' || action.actionType === 'power_look_swap') {
-            toast.info(action.description)
-        }
-    }, [gameState?.lastActionAt])
 
     if (!gameState) {
         return (

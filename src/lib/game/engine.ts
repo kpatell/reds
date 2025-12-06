@@ -79,7 +79,25 @@ export function drawCard(state: GameState, playerId: string, source: 'deck' | 'd
   let card: Card | undefined
 
   if (source === 'deck') {
-    card = newState.deck.pop()
+    // DEBUG: Force Draw
+    if (typeof window !== 'undefined') {
+        const debugRank = localStorage.getItem('debug_next_card')
+        if (debugRank) {
+            const index = newState.deck.findIndex(c => c.rank === debugRank)
+            if (index !== -1) {
+                const [forced] = newState.deck.splice(index, 1)
+                card = forced
+                console.log(`[DEBUG] Forced draw: ${card.rank}`)
+                localStorage.removeItem('debug_next_card')
+            } else {
+                card = newState.deck.pop()
+            }
+        } else {
+             card = newState.deck.pop()
+        }
+    } else {
+         card = newState.deck.pop()
+    }
     // TODO: Handle empty deck (end game)
   } else {
     card = newState.discardPile.pop()
