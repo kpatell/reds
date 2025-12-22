@@ -27,7 +27,11 @@ export default function Game() {
         const action = gameState.lastGameAction
         const actionTime = new Date(gameState.lastActionAt).getTime()
         const now = new Date().getTime()
-        if (now - actionTime > 5000) return
+
+        // Debug
+        console.log('Last Action:', action, 'Time Diff:', now - actionTime)
+
+        if (now - actionTime > 10000) return
 
         if (action.actionType === 'swap' || action.actionType === 'power_blind_swap' || action.actionType === 'power_look_swap') {
             toast.info(action.description)

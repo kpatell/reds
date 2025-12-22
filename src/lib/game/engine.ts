@@ -98,7 +98,28 @@ export function drawCard(state: GameState, playerId: string, source: 'deck' | 'd
     } else {
          card = newState.deck.pop()
     }
-    // TODO: Handle empty deck (end game)
+    // Handle empty deck
+    if (newState.deck.length === 0) {
+        if (newState.discardPile.length > 0) {
+             // Recycle discard pile
+             // Keep the top card (if any) or recycle all? Usually top remains.
+             // Rules vary. Let's assume we shuffle ALL discard into deck for simplicity, or keep top.
+             // Standard: Top card stays, rest shuffle.
+             const topDiscard = newState.discardPile.pop()
+             const cardsToRecycle = [...newState.discardPile]
+             
+             // Shuffle
+             for (let i = cardsToRecycle.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cardsToRecycle[i], cardsToRecycle[j]] = [cardsToRecycle[j], cardsToRecycle[i]];
+             }
+             
+             newState.deck = cardsToRecycle
+             newState.discardPile = topDiscard ? [topDiscard] : []
+             
+             console.log('Deck empty! Recycled discard pile.')
+        }
+    }
   } else {
     card = newState.discardPile.pop()
   }

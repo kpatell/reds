@@ -14,7 +14,7 @@ interface PlayerHandProps {
 
 
 
-export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId, isInteractive }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null, isInteractive?: boolean }) {
+export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId, isInteractive, revealViewedCard = true }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null, isInteractive?: boolean, revealViewedCard?: boolean }) {
 
     return (
         <div className={cn("flex flex-col items-center gap-2", className)}>
@@ -22,12 +22,41 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
                 {player.hand.map((card, index) => {
                     // Logic:
                     // 1. Override (Peek Phase) -> Show
-                    // 2. Currently Viewing (Power Peek) -> Show
-                    // 3. Known by me -> Show indicator (Ring), but NOT face up
+                    // 2. Currently Viewing (Power Peek) -> Show ONLY if I am the current user or properly authorized.
+                    //    However, viewingCardId is passed from GameBoard based on context.
+                    //    Issue: Opponent view was receiving a viewingCardId.
+                    //    Fix: checking isCurrentUser or relying on correct props from parent.
+                    //    Actually, PlayerHand only knows `viewingCardId`. If it matches, it shows face up.
+                    //    So GameBoard must NOT pass viewingCardId for the opponent if the User shouldn't see it?
+                    //    But we need the RING to show.
+
+                    // New Approach: Separate "Reveal Logic" vs "Highlight Logic".
+                    // The "viewingCardId" prop currently forces FaceUp. We should change this behavior.
+
                     const isViewing = viewingCardId === card.id
                     const isBeingViewedByOpponent = beingViewedCardId === card.id
 
-                    const shouldShowFaceUp = overrideFaceUp?.includes(index) || isViewing
+                    // Only show face up if implicit rules are met:
+                    // - It's my hand (isCurrentUser) and I am viewing it? Yes.
+                    // - It's opponent's hand (!isCurrentUser) and I am viewing it? Yes.
+                    // - BUT: If I am the opponent (from another perspective), I shouldn't see it just because "viewingCardId" is set for highlighting.
+
+                    // We need to trust the parent to only pass "viewingCardId" when it should be REVEALED.
+                    // But we used viewingCardId for the yellow ring too.
+                    // Let's rely on Card to handle "isFaceUp" strictly via props, and use viewingCardId just for the ring?
+                    // No, existing logic relies on `shouldShowFaceUp` to flip the card.
+
+                    // Fix: Add a check `isCurrentUser` for self-peeks?
+                    // If !isCurrentUser (Opponent Hand), and I have `viewingCardId`, that means I am peeking at it (Power 8, Power 10). So I SHOULD see it.
+                    // The bug reported is: "My opponent is also able to see the card".
+                    // This means when Player A is peeking at Player A's card (Power 10 self-view), Player B sees it flipped.
+                    // This happens because Player B sees Player A component.
+                    // In Player B's `GameBoard`, `opponent` is Player A.
+                    // `viewingCardId` is passed as `opponent.viewingCardId`?
+                    // Let's check GameBoard.
+
+
+                    const shouldShowFaceUp = overrideFaceUp?.includes(index) || (isViewing && revealViewedCard)
 
                     return (
                         <div key={card.id} className="relative group">

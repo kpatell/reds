@@ -54,6 +54,14 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
         isPowerActionStep2
     )
 
+    // Gray-out logic for MY hand:
+    // Active if:
+    // 1. It's my turn
+    // 2. NOT peek opponent phase (I interact with opponent hand)
+    // 3. NOT viewing phase (I am looking at a card)
+    // 4. NOT step 2 of power swap (I interact with opponent hand)
+    const isMyHandInteractive = isMyTurn && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerActionStep2
+
     return (
         <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-8 gap-12 relative justify-between">
             {/* Header: Leave Game & Turn Info */}
@@ -97,7 +105,14 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         }}
                         // Removed opacity logic as requested
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
-                        viewingCardId={currentPlayer?.viewingCardId}
+                        // Logic for what "Yellow Ring" (active viewing) to show on Opponent's Hand:
+                        // 1. Standard: If they are peeking at their own card (power_peek_self).
+                        // 2. Power 9/10 Step 2: They have selected a card in THEIR hand (swapSource) and are now looking at mine. 
+                        //    But we still want to show that THEIR card is "active/selected".
+                        //    So if they have a swapSourceCardId, that is the card in THEIR hand we should highlight.
+                        viewingCardId={(!isMyTurn && opponent?.swapSourceCardId) ? opponent.swapSourceCardId : currentPlayer?.viewingCardId}
+                        // CRITICAL FIX: Do NOT reveal the card value to me if I am just seeing what the opponent is looking at in their own hand!
+                        revealViewedCard={!!currentPlayer?.viewingCardId} // Only reveal if *I* am the one viewing it
                         beingViewedCardId={opponent?.viewingCardId}
                     />
                 ) : (
@@ -298,7 +313,8 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 }
                             }}
                             selectedCardId={isPowerBlindSwapPhase || isPowerLookSwapPhase || isPowerLookSwapDecisionPhase ? currentPlayer.swapSourceCardId : undefined}
-                            // Removed opacity logic as requested
+                            // Gray out logic restored:
+                            className={!isMyHandInteractive ? "opacity-50 transition-opacity pointer-events-none" : ""}
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                             viewingCardId={isPowerLookSwapDecisionPhase ? currentPlayer.swapSourceCardId : currentPlayer.viewingCardId}
