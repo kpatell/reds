@@ -5,88 +5,92 @@
 **Stack:** React (Vite), TypeScript, TailwindCSS, Zustand, React Query, Supabase (DB + Auth + Realtime).
 
 ## 1. General Architecture & File Structure
-- **Feature-Based Organization:** Organize code by feature (e.g., `src/features/game`, `src/features/lobby`, `src/features/auth`) rather than type. Each feature folder should contain its own components, hooks, and types.
-- **Barrel Exports:** Use `index.ts` files for clean imports from feature modules, but avoid circular dependencies.
-- **Naming Conventions:**
-  - Components: `PascalCase.tsx` (e.g., `CardPile.tsx`)
-  - Hooks: `camelCase.ts` (starts with `use`, e.g., `useGameState.ts`)
-  - Utilities: `camelCase.ts` (e.g., `cardUtils.ts`)
-  - Types: `PascalCase.ts` (e.g., `GameTypes.ts`)
+- **Feature-Based Organization:** Strict separation by feature (e.g., `src/features/game`, `src/features/lobby`).
+- **Barrel Exports:** Use `index.ts` for clean imports.
+- **Strict File Boundaries:** Game logic (pure functions) must be separate from React Components.
+    - `src/features/game/logic/`: Pure TS functions (scoring, shuffling, valid moves).
+    - `src/features/game/components/`: UI components.
+    - `src/features/game/hooks/`: State integration.
 
 ## 2. TypeScript & Type Safety
-- **Strict Mode:** `strict: true` is mandatory in `tsconfig.json`.
-- **No `any`:** explicit `any` is strictly forbidden. Use `unknown` with narrowing if the type is truly dynamic.
-- **Supabase Types:** ALWAYS use Database types generated from the Supabase schema.
-  - *Pattern:* `import { Database } from '@/types/supabase'`
-- **Discriminated Unions:** Use discriminated unions for game state (e.g., `{ status: 'waiting' } | { status: 'playing', currentTurn: string }`) to prevent invalid states.
-- **Prop Interfaces:** Define Component props explicitly using `interface` or `type`.
+- **Strict Mode:** `strict: true` in `tsconfig.json`.
+- **No `any`:** Forbidden. Use `unknown` with type guards if necessary.
+- **Supabase Types:** Use `Database` generated types.
+    - *Constraint:* Do not manually type DB responses. Extend DB types only for UI-specific computed properties.
+- **Discriminated Unions:** MANDATORY for Game State.
+    - Example: `type GameState = { status: 'PREVIEW' } | { status: 'PLAYING'; turn: string } | { status: 'FINISHED'; winner: string }`.
 
-## 3. React & Performance
-- **Functional Components:** Use function declarations for components.
-- **Render Logic:** Keep render phases pure. Side effects must be in `useEffect` or event handlers.
-- **Memoization:**
-  - Use `useMemo` for expensive card logic (e.g., calculating valid moves, sorting hands).
-  - Use `useCallback` for functions passed as props to prevent unnecessary child re-renders.
-- **Custom Hooks:** Extract logic from UI components. UI components should only worry about display; hooks handle the data layer.
+## 3. State Management (Zustand & React Query)
+- **Server State (React Query):** Handles `games`, `profiles`.
+    - **Stale Time:** Set to `Infinity` for static data, `0` for game state (rely on Realtime subscriptions to invalidate queries).
+- **Client State (Zustand):** Handles UI interaction (drag-and-drop state, selected card ID, animation flags).
+- **Optimistic Updates:** Crucial for "Stacking".
+    - When a player Stacks: 1. Update Zustand UI immediately. 2. Send request to Supabase. 3. If Supabase errors (race condition), rollback Zustand state and show "Too Slow" toast.
 
-## 4. State Management (Zustand & React Query)
-- **Separation of Concerns:**
-  - **Server State (React Query):** Use for `games`, `profiles`, and `waiting_rooms` data fetching. Use `staleTime: 0` for real-time game data to ensure freshness, or rely on subscriptions.
-  - **Client State (Zustand):** Use for UI-only state (e.g., `isCardSelected`, `animationState`, `localSortingPreferences`).
-- **Atomic Selectors:** When using Zustand, select only the specific slice of state needed to prevent re-renders.
-  - *Correct:* `const isSelected = useStore(state => state.selectedCardId === id)`
-  - *Incorrect:* `const { selectedCardId } = useStore(state => state)`
-
-## 5. Supabase & Realtime
-- **Row Level Security (RLS):** Never write logic that assumes the client has full access. Ensure all DB queries handle RLS errors gracefully.
+## 4. Supabase & Realtime Strategy
+- **Postgres Functions (RPC):**
+    - **CRITICAL:** Do not perform gameplay logic (like swapping cards) on the client and then patch the row.
+    - **Requirement:** Call a Postgres RPC function (e.g., `play_turn`, `attempt_stack`) passing the `card_id` and action. The Database must handle the logic and verification to ensure atomicity.
 - **Realtime Subscriptions:**
-  - Limit subscriptions to the specific `game_id`.
-  - ALWAYS clean up subscriptions in the `useEffect` cleanup function.
-  - Debounce rapid updates if necessary, but "Stacking" requires immediate transmission.
-- **Optimistic Updates:** For "Stacking" mechanics, update the UI immediately upon user action, then reconcile with the server response. If the server rejects (race condition), rollback the UI state with a visual indicator.
+    - Subscribe to `UPDATE` on the `games` table with a filter `id=eq.{gameId}`.
+    - Handle `postgres_changes` payload to update the React Query cache via `queryClient.setQueryData`.
+
+## 5. Game Logic Specifics
+- **Card Identity:**
+    - Cards are Objects: `{ id: string (UUID), suit: 'hearts', value: 5, rank: '5', power: boolean }`.
+    - **NEVER** compare cards by value alone. Always compare by `id`.
+- **State Hygiene (Metadata Reset):**
+    - **CRITICAL:** When a card is moved between hands (via Swap) or returned to a hand (via Penalty), any "Known/Revealed" flags must be reset to `false`.
+    - **Principle:** Knowledge does not travel. A card entering a player's hand is always "Unknown/Face-down" unless explicitly revealed *after* the move.
+- **Deck Reshuffling (Auto-Trigger):**
+    - If a player attempts to draw from the `DECK` and `deck_count === 0`:
+    - The RPC function must automatically:
+        1. Take all cards from `DISCARD` *except* the top card.
+        2. Shuffle them.
+        3. Insert them into `DECK`.
+        4. Complete the player's draw action.
+- **Dynamic Hand Sizes:**
+    - The player's hand is NOT fixed at 4 cards. It is a dynamic array that can shrink (successful stack) or grow (penalties).
+- **Public Signaling of Private Actions:**
+    - The Game State must include a `last_action` field containing metadata (e.g., `{ type: 'PEEK', target_player: 'p2', target_index: 1 }`).
+    - The Frontend must render indicators (eye icon, highlight) on the specific card being interacted with.
+- **The "Stacking" Race Condition:**
+    - The server is the source of truth.
+    - If Player A and Player B stack at the exact same ms, the RPC function processes one first. The second call must return `STACK_FAILED_LATE`.
+    - **The "Buried" Draw:** If Player A tries to draw the top card of the Discard pile, but Player B stacks on top of it before the server processes the draw, Player A's draw MUST fail. The UI must refresh, showing the new top card (Player B's card).
+    - **Penalty Logic:** The RPC must automatically handle the penalty transaction (dealing a new card to the failed player).
 
 ## 6. Styling (TailwindCSS)
-- **Utility First:** Avoid `@apply` in CSS files unless creating a reusable component base pattern. Use utility classes directly in JSX.
-- **Class Merging:** Use `clsx` and `tailwind-merge` (or a `cn()` utility) to handle conditional class names dynamically.
-- **Mobile First:** Design for mobile views first, then use `md:` and `lg:` modifiers for desktop.
-- **Dark Mode:** Ensure `dark:` variants are used for the "Premium dark mode" aesthetic.
+- **Mobile First:** All layouts must work on 375px width.
+- **Animations:** Use `framer-motion` or CSS transitions for card movements.
+- **Conditionals:** Use `clsx` and `tailwind-merge`.
 
-## 7. Game Logic Specifics (Reds)
-- **Card Identification:**
-  - NEVER rely on `Value + Suit` for uniqueness.
-  - ALWAYS use a unique `card_id` (UUID or unique string) because a deck + jokers can have duplicates (if multiple decks are used later) and for precise animation tracking.
-- **Stacking Race Conditions:**
-  - Implement a `last_action_at` timestamp check in the backend RLS or Edge Function to reject moves made on stale state.
-  - Frontend must handle "move rejected" scenarios gracefully.
-- **Power Cards (7, 8, 9, 10):**
-  - Logic for powers must be encapsulated in pure functions (e.g., `calculateNextGameState(current, action)`).
-  - "Peeking" logic must ensure only the requesting player receives the private card data (via RLS or filtered response).
+## 7. Anti-Patterns
+- **Prop Drilling:** Max 2 levels.
+- **Magic Numbers:** Use constants (e.g., `POINTS.RED_KING = -2`).
+- **Client-Side Validation Only:** Never trust the client. The DB RPC function must re-validate that the move is legal before mutating data.
 
-## 8. Anti-Patterns (DO NOT DO)
-- **Prop Drilling:** Do not pass game state down more than 2 levels. Use the Zustand store or React Context.
-- **Magic Numbers:** Do not use `7`, `8`, `9` directly in code. Use constants `CARD_POWERS.PEEK_SELF` etc.
-- **Direct DOM Manipulation:** Do not touch the DOM directly. Use `useRef` if necessary for animations/canvas.
-- **Ignoring Loading States:** Every async action (fetching game, playing card) must have a visual loading/pending state.
+## 8. Git & Testing
+- **Conventional Commits:** Required.
+- **Unit Tests:** All logic in `src/features/game/logic/` must have 100% coverage via Vitest.
 
-## 9. Testing Strategy
-- **Unit Tests:** Write tests for the `Game Logic` pure functions (shuffling, win condition, power activation) using Vitest.
-- **Mocking:** Mock Supabase calls when testing components.
+## 9. UI/UX & Design System
+- **Theme Name:** "Reds Minimalist"
+- **Color Palette:**
+    - **Backgrounds:** `bg-stone-100` or `#E6DCC3` (Tan/Felt) as the primary board color.
+    - **Accents:** `text-red-700` / `bg-red-600` for primary actions (Buttons, "REDS" call) and Heart/Diamond suits.
+    - **Neutrals:** `slate-900` (Black) for text, borders, and Club/Spade suits.
+    - **Cards:** White card face, simple geometric pattern for card backs (Red/Black/Tan).
+- **Typography:**
+    - Clean Sans-Serif (e.g., `Inter` or `Geist Sans`).
+    - Bold weights for Scores and Game Status.
+- **Visual Style:**
+    - **Minimalism:** No heavy textures (wood/felt images). Use solid colors and subtle borders.
+    - **Focus:** The "Board" should be clean. Only the cards and essential buttons (Draw, Swap, Call Reds) should be prominent.
+    - **Indicators:** Use subtle animations (pulsing border) for "Your Turn" rather than massive banners.
 
-## 10. Git Workflow & Documentation Standards
-- **Conventional Commits:** All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
-  - `feat(game): add shuffling logic`
-  - `fix(lobby): resolve join button race condition`
-  - `style(card): update border radius`
-  - `docs(readme): add setup instructions`
-- **Branching Strategy:**
-  - `main`: Production-ready code only. Protected branch.
-  - `dev` (optional): Integration branch.
-  - `feat/feature-name`: For new features (Phase 1, 2, 3 tasks).
-  - `fix/issue-description`: For bug fixes.
-- **Pull Request (PR) Etiquette:**
-  - PRs must be small and focused. Avoid massive "Phase 2 Complete" PRs; break them down into "Deck Generation" and "Turn Structure".
-  - Include a screenshot or GIF for UI changes.
-- **Documentation Hygiene:**
-  - **Inline Docs:** Use TSDoc (`/** ... */`) for all exported functions and complex game logic helpers. Explain *why* a calculation is done, not just *what* it does.
-  - **Supabase Schema:** Maintain a `DB_SCHEMA.md` or updated `types/supabase.ts` file. Any change to the DB schema must be reflected in the repo immediately.
-  - **Implementation Status:** Update `README.md` checklist items as features are completed (Phase 1, Phase 2, etc.) to keep track of progress.
+## 10. Matchmaking (Lobby)
+- **Mechanism:** Simple "Room Code" system.
+    - Host creates game -> Generates 4-character code (e.g., `ABCD`).
+    - Opponent enters code -> Joins lobby.
+- **Requirement:** Do not implement complex matchmaking queues. Keep it manual and simple.
