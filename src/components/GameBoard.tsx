@@ -56,11 +56,9 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
 
     // Gray-out logic for MY hand:
     // Active if:
-    // 1. It's my turn
-    // 2. NOT peek opponent phase (I interact with opponent hand)
-    // 3. NOT viewing phase (I am looking at a card)
-    // 4. NOT step 2 of power swap (I interact with opponent hand)
-    const isMyHandInteractive = isMyTurn && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerActionStep2
+    // 1. Peek Phase (Game Start)
+    // 2. It's my turn AND NOT interacting with opponent (Powers 8, 9, 10 step 2)
+    const isMyHandInteractive = isPeekPhase || (isMyTurn && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerActionStep2)
 
     return (
         <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-8 gap-12 relative justify-between">
@@ -103,7 +101,10 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 onResolvePower?.(card.id)
                             }
                         }}
-                        // Removed opacity logic as requested
+                        // Gray out opponent hand if not interactive (e.g. standard turn, or opponent turn)
+                        // User Request: "When I am player 1, my opponent's cards should be grayed out" (Standard)
+                        // "When I am the opponent, player 1's cards should be grayed out" (Standard)
+                        className={!isOpponentHandInteractive ? "opacity-50 transition-opacity" : ""}
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                         // Logic for what "Yellow Ring" (active viewing) to show on Opponent's Hand:
                         // 1. Standard: If they are peeking at their own card (power_peek_self).

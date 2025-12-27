@@ -60,7 +60,7 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
 
                     return (
                         <div key={card.id} className="relative group">
-                            {isBeingViewedByOpponent && (
+                            {(isBeingViewedByOpponent || (isViewing && !isCurrentUser && !revealViewedCard)) && (
                                 <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/20 rounded-xl backdrop-blur-[1px] animate-pulse">
                                     <div className="bg-white/90 rounded-full p-2 shadow-lg">
                                         <div className="text-2xl">👁️</div>
