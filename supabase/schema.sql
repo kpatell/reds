@@ -28,7 +28,8 @@ create table games (
   -- Structure: { [user_id]: { hand: Card[], is_ready: boolean, has_called_reds: boolean } }
   players jsonb default '{}'::jsonb,
   
-  last_action_at timestamp with time zone default timezone('utc'::text, now())
+  last_action_at timestamp with time zone default timezone('utc'::text, now()),
+  last_game_action jsonb
 );
 
 -- RLS Policies
