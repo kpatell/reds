@@ -34,7 +34,11 @@ export default function Game() {
         if (now - actionTime > 10000) return
 
         if (action.actionType === 'swap' || action.actionType === 'power_blind_swap' || action.actionType === 'power_look_swap') {
-            toast.info(action.description)
+            toast.info(action.description) // Description already distinguishes "Swapped" vs "Kept"
+        }
+
+        if (action.actionType === 'power_skip') {
+            toast.info("Opponent declined to swap (Power 9)")
         }
     }, [gameState?.lastActionAt])
 
