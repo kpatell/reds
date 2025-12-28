@@ -29,9 +29,15 @@ export default function Game() {
         const now = new Date().getTime()
 
         // Debug
-        console.log('Last Action:', action, 'Time Diff:', now - actionTime)
+        console.log('Last Action Payload:', action)
+        console.log('Action Time Diff:', now - actionTime)
 
-        if (now - actionTime > 10000) return
+        if (now - actionTime > 10000) {
+            console.log('Skipping notification: Action too old')
+            return
+        }
+
+        console.log('Triggering notification for:', action.actionType)
 
         if (action.actionType === 'swap' || action.actionType === 'power_blind_swap' || action.actionType === 'power_look_swap') {
             toast.info(action.description) // Description already distinguishes "Swapped" vs "Kept"
@@ -40,7 +46,7 @@ export default function Game() {
         if (action.actionType === 'power_skip') {
             toast.info("Opponent declined to swap (Power 9)")
         }
-    }, [gameState?.lastActionAt])
+    }, [gameState?.lastActionAt, gameState?.lastGameAction]) // Add lastGameAction dependency
 
     // Auto-sign in for guests accessing via link
     useEffect(() => {
