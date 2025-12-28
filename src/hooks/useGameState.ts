@@ -100,6 +100,7 @@ function mapRowToGameState(row: GameRow): GameState {
     drawnCard: (row.drawn_card as any)?.card || (row.drawn_card as any) || null, // Handle legacy or new format
     drawnCardSource: (row.drawn_card as any)?.source || null,
     lastActionAt: row.last_action_at || new Date().toISOString(),
+    lastGameAction: (row as any).last_game_action || null,
     winnerId: null
   }
 }
