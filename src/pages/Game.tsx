@@ -145,7 +145,7 @@ export default function Game() {
     }
 
     const handleGameUpdate = async (newGameState: any) => {
-        const updatePayload: Database['public']['Tables']['games']['Update'] = {
+        const updatePayload: any = {
             status: newGameState.status,
             deck: newGameState.deck as unknown as Json,
             discard_pile: newGameState.discardPile as unknown as Json,
@@ -156,7 +156,9 @@ export default function Game() {
             drawn_card: newGameState.drawnCard
                 ? { ...newGameState.drawnCard, source: newGameState.drawnCardSource } as unknown as Json
                 : null,
-            last_action_at: new Date().toISOString()
+            last_action_at: new Date().toISOString(),
+            // Ensure lastGameAction is synced to DB so opponent gets notifications
+            last_game_action: newGameState.lastGameAction as unknown as Json
         }
 
         const { error } = await (supabase
