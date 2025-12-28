@@ -49,16 +49,22 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     // Interaction & Gray-out Logic
     const isPowerActionStep2 = (isPowerBlindSwapPhase || isPowerLookSwapPhase) && !!currentPlayer.swapSourceCardId
 
+    // Define where the "Viewing" focus is
+    const viewingOwnCard = isPowerPeekViewingPhase && !!currentPlayer.viewingCardId && currentPlayer.hand.some(c => c.id === currentPlayer.viewingCardId)
+    const viewingOpponentCard = isPowerPeekViewingPhase && !!currentPlayer.viewingCardId && !viewingOwnCard
+
     const isOpponentHandInteractive = isMyTurn && (
         isPowerPeekOpponentPhase ||
-        isPowerActionStep2
+        isPowerActionStep2 ||
+        viewingOpponentCard
     )
 
     // Gray-out logic for MY hand:
     // Active if:
     // 1. Peek Phase (Game Start)
     // 2. It's my turn AND NOT interacting with opponent (Powers 8, 9, 10 step 2)
-    const isMyHandInteractive = isPeekPhase || (isMyTurn && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerActionStep2)
+    // 3. Exception: If I am viewing my OWN card (Power 7), it should stay active.
+    const isMyHandInteractive = isPeekPhase || (isMyTurn && !isPowerPeekOpponentPhase && (!isPowerPeekViewingPhase || viewingOwnCard) && !isPowerActionStep2)
 
     return (
         <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-8 gap-12 relative justify-between">
