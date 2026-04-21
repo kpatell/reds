@@ -49,6 +49,10 @@ export interface GameState {
       playerId: string;
       actionType: 'draw' | 'discard' | 'swap' | 'power_peek_self' | 'power_peek_opponent' | 'power_blind_swap' | 'power_look_swap' | 'power_skip';
       description: string;
+      metadata?: {
+          swapSourceCardId?: string | null
+          swapTargetCardId?: string | null
+      }
   } | null
   winnerId: string | null
 }

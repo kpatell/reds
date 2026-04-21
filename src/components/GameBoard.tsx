@@ -15,9 +15,10 @@ interface GameBoardProps {
     onFinishPeek?: () => void
     onPowerLookSwapDecision?: (action: 'swap' | 'keep') => void
     onSkipPower?: () => void
+    highlightedCardIds?: string[]
 }
 
-export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower }: GameBoardProps) {
+export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower, highlightedCardIds }: GameBoardProps) {
     const { user } = useAuth()
 
     if (!user) {
@@ -126,6 +127,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         viewingCardId={(!isMyTurn && opponent?.swapSourceCardId) ? opponent.swapSourceCardId : currentPlayer?.viewingCardId}
                         // CRITICAL FIX: Do NOT reveal the card value to me if I am just seeing what the opponent is looking at in their own hand!
                         revealViewedCard={!!currentPlayer?.viewingCardId} // Only reveal if *I* am the one viewing it
+                        highlightedCardIds={highlightedCardIds}
                         beingViewedCardId={opponent?.viewingCardId}
                     />
                 ) : (
@@ -332,6 +334,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                             viewingCardId={isPowerLookSwapDecisionPhase ? currentPlayer.swapSourceCardId : currentPlayer.viewingCardId}
                             // If opponent is viewing one of MY cards, show it as being viewed
+                            highlightedCardIds={highlightedCardIds}
                             beingViewedCardId={opponent?.viewingCardId}
                         />
 

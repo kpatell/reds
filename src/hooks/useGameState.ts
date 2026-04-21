@@ -29,10 +29,7 @@ export function useGameState(gameId: string) {
         },
         (payload) => {
           const newGameRow = payload.new as GameRow
-          // Convert DB row to GameState (need a mapper function)
-          // For now, we might need to store the FULL GameState in the DB as JSON or map it.
-          // The DB schema has: deck, discard_pile, players (jsonb).
-          // We need to map this back to our GameState interface.
+          // Convert DB row to GameState
           setGameState(mapRowToGameState(newGameRow))
         }
       )

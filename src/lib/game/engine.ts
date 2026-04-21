@@ -129,6 +129,7 @@ export function drawCard(state: GameState, playerId: string, source: 'deck' | 'd
   newState.drawnCard = card
   newState.drawnCardSource = source
   newState.turnPhase = 'action'
+  newState.lastGameAction = null
   newState.lastActionAt = new Date().toISOString()
 
   return newState
@@ -153,6 +154,7 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
   if (newState.drawnCardSource === 'discard') {
       newState.turnPhase = 'draw'
       newState.drawnCardSource = null
+      newState.lastGameAction = null
       newState.lastActionAt = new Date().toISOString()
       return newState
   }
@@ -164,24 +166,28 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
   if (source === 'deck') {
       if (card.rank === '7') {
           newState.turnPhase = 'power_peek_self'
+          newState.lastGameAction = null
           newState.lastActionAt = new Date().toISOString()
           return newState
       }
       
       if (card.rank === '8') {
           newState.turnPhase = 'power_peek_opponent'
+          newState.lastGameAction = null
           newState.lastActionAt = new Date().toISOString()
           return newState
       }
 
       if (card.rank === '9') {
           newState.turnPhase = 'power_blind_swap'
+          newState.lastGameAction = null
           newState.lastActionAt = new Date().toISOString()
           return newState
       }
 
       if (card.rank === '10') {
           newState.turnPhase = 'power_look_swap'
+          newState.lastGameAction = null
           newState.lastActionAt = new Date().toISOString()
           return newState
       }
@@ -249,14 +255,19 @@ export function resolvePowerBlindSwap(state: GameState, playerId: string, target
     player.hand[myCardIndex] = opponentCard
     opponent.hand[opponentCardIndex] = myCard
 
-    // Clear selection
-    player.swapSourceCardId = null
-    
     newState.lastGameAction = {
         playerId,
         actionType: 'power_blind_swap',
-        description: 'Swapped cards (Blind Swap)'
+        description: 'Swapped cards (Blind Swap)',
+        // Add details for frontend highlighting
+        metadata: {
+            swapSourceCardId: player.swapSourceCardId, // The card from initiator's hand (now in opponent's)
+            swapTargetCardId: targetCardId             // The card from opponent's hand (now in initiator's)
+        }
     }
+
+    // Clear selection
+    player.swapSourceCardId = null
     
     return endTurn(newState)
 }
@@ -457,6 +468,7 @@ export function finishPeek(state: GameState, playerId: string): GameState {
     const newState = structuredClone(state)
     const player = newState.players[playerId]
     player.viewingCardId = null
+    newState.lastGameAction = null
     return endTurn(newState)
 }
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -20,6 +20,8 @@ export default function Game() {
     const { user, signInAnonymously, loading: authLoading } = useAuth()
     const { gameState, loading: gameLoading, error } = useGameState(gameId!)
 
+    const [highlightedCardIds, setHighlightedCardIds] = useState<string[]>([])
+
     // Effect for notifications based on lastAction
     useEffect(() => {
         if (!gameState?.lastGameAction) return
@@ -28,25 +30,27 @@ export default function Game() {
         const actionTime = new Date(gameState.lastActionAt).getTime()
         const now = new Date().getTime()
 
-        // Debug
-        console.log('Last Action Payload:', action)
-        console.log('Action Time Diff:', now - actionTime)
+        if (now - actionTime > 5000) return // Reduce timeout to avoid old toasts
 
-        if (now - actionTime > 10000) {
-            console.log('Skipping notification: Action too old')
-            return
-        }
-
-        console.log('Triggering notification for:', action.actionType)
-
+        // Handle Notifications
         if (action.actionType === 'swap' || action.actionType === 'power_blind_swap' || action.actionType === 'power_look_swap') {
-            toast.info(action.description) // Description already distinguishes "Swapped" vs "Kept"
+            toast.info(action.description)
+
+            // Handle Blind Swap Visuals
+            if (action.actionType === 'power_blind_swap' && action.metadata) {
+                const { swapSourceCardId, swapTargetCardId } = action.metadata as any
+                if (swapSourceCardId && swapTargetCardId) {
+                    setHighlightedCardIds([swapSourceCardId, swapTargetCardId])
+                    // Clear after 3 seconds
+                    setTimeout(() => setHighlightedCardIds([]), 3000)
+                }
+            }
         }
 
         if (action.actionType === 'power_skip') {
             toast.info("Opponent declined to swap (Power 9)")
         }
-    }, [gameState?.lastActionAt, gameState?.lastGameAction]) // Add lastGameAction dependency
+    }, [gameState?.lastActionAt, gameState?.lastGameAction])
 
     // Auto-sign in for guests accessing via link
     useEffect(() => {
@@ -167,12 +171,18 @@ export default function Game() {
             last_game_action: newGameState.lastGameAction as unknown as Json
         }
 
+        console.log('[Game Update] Sending payload:', updatePayload)
+
         const { error } = await (supabase
             .from('games') as any)
             .update(updatePayload)
             .eq('id', gameId)
 
-        if (error) console.error('Error updating game:', error)
+        if (error) {
+            console.error('[Game Update] Update FAILED:', error)
+        } else {
+            console.log('[Game Update] Update SUCCESS')
+        }
     }
 
     const handleDraw = async (source: 'deck' | 'discard') => {
@@ -298,6 +308,7 @@ export default function Game() {
                     onFinishPeek={handleFinishPeek}
                     onPowerLookSwapDecision={handlePowerLookSwapDecision}
                     onSkipPower={handleSkipPower}
+                    highlightedCardIds={highlightedCardIds}
                 />
             </ScaleContainer>
         </div>
