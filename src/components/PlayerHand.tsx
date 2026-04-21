@@ -15,14 +15,14 @@ interface PlayerHandProps {
 
 
 
-export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId, isInteractive, revealViewedCard = true, highlightedCardIds = [] }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null, isInteractive?: boolean, revealViewedCard?: boolean }) {
+export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId, beingViewedCardIds = [], isInteractive, revealViewedCard = true, highlightedCardIds = [] }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null, beingViewedCardIds?: (string | null | undefined)[], isInteractive?: boolean, revealViewedCard?: boolean }) {
 
     return (
         <div className={cn("flex flex-col items-center gap-2", className)}>
             <div className="grid grid-cols-2 gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
                 {player.hand.map((card, index) => {
                     const isViewing = viewingCardId === card.id
-                    const isBeingViewedByOpponent = beingViewedCardId === card.id
+                    const isBeingViewedByOpponent = beingViewedCardId === card.id || beingViewedCardIds.includes(card.id)
                     const isHighlighted = highlightedCardIds?.includes(card.id)
 
                     const shouldShowFaceUp = overrideFaceUp?.includes(index) || (isViewing && revealViewedCard)

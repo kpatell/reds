@@ -262,7 +262,8 @@ export function resolvePowerBlindSwap(state: GameState, playerId: string, target
         // Add details for frontend highlighting
         metadata: {
             swapSourceCardId: player.swapSourceCardId, // The card from initiator's hand (now in opponent's)
-            swapTargetCardId: targetCardId             // The card from opponent's hand (now in initiator's)
+            swapTargetCardId: targetCardId,             // The card from opponent's hand (now in initiator's)
+            highlightedCardIds: [player.swapSourceCardId!, targetCardId] // Standardized field
         }
     }
 
@@ -337,6 +338,15 @@ export function resolvePowerLookSwap(state: GameState, playerId: string, targetC
     player.viewingCardId = targetCardId // Reveal opponent card
     newState.lastActionAt = new Date().toISOString()
 
+    newState.lastGameAction = {
+        playerId,
+        actionType: 'power_look_swap',
+        description: 'Looking at cards to swap',
+        metadata: {
+            highlightedCardIds: [player.swapSourceCardId!, targetCardId]
+        }
+    }
+
     return newState
 }
 
@@ -380,6 +390,10 @@ export function resolvePowerLookSwapDecision(state: GameState, playerId: string,
         }
     }
 
+    // Capture IDs before clearing
+    const sourceId = player.swapSourceCardId
+    const targetId = player.viewingCardId
+
     // Clear state
     player.swapSourceCardId = null
     player.viewingCardId = null
@@ -387,7 +401,10 @@ export function resolvePowerLookSwapDecision(state: GameState, playerId: string,
     newState.lastGameAction = {
         playerId,
         actionType: 'power_look_swap',
-        description: action === 'swap' ? 'Swapped cards (Look & Swap)' : 'Kept own card (Look & Swap)'
+        description: action === 'swap' ? 'Swapped cards (Look & Swap)' : 'Kept own card (Look & Swap)',
+        metadata: {
+            highlightedCardIds: (sourceId && targetId) ? [sourceId, targetId] : []
+        }
     }
 
     return endTurn(newState)
@@ -416,6 +433,16 @@ export function resolvePowerPeekSelf(state: GameState, playerId: string, targetC
     newState.turnPhase = 'power_peek_viewing'
     player.viewingCardId = targetCardId
     newState.lastActionAt = new Date().toISOString()
+    
+    // Add Notification with visual
+    newState.lastGameAction = {
+        playerId,
+        actionType: 'power_peek_self',
+        description: 'Peeking at own card',
+        metadata: {
+            highlightedCardIds: [targetCardId]
+        }
+    }
 
     return newState
 }
@@ -503,7 +530,10 @@ export function swapCard(state: GameState, playerId: string, targetCardId: strin
   newState.lastGameAction = {
       playerId,
       actionType: 'swap',
-      description: 'Swapped drawn card with hand'
+      description: 'Swapped drawn card with hand',
+      metadata: {
+          highlightedCardIds: [newHandCard.id] 
+      }
   }
 
   return endTurn(newState)

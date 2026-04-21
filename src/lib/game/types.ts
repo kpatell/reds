@@ -52,6 +52,7 @@ export interface GameState {
       metadata?: {
           swapSourceCardId?: string | null
           swapTargetCardId?: string | null
+          highlightedCardIds?: string[]
       }
   } | null
   winnerId: string | null

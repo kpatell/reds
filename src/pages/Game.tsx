@@ -32,16 +32,16 @@ export default function Game() {
 
         if (now - actionTime > 5000) return // Reduce timeout to avoid old toasts
 
-        // Handle Notifications
-        if (action.actionType === 'swap' || action.actionType === 'power_blind_swap' || action.actionType === 'power_look_swap') {
+        // Handle Notifications & Visuals
+        if (['swap', 'power_peek_self', 'power_peek_opponent', 'power_blind_swap', 'power_look_swap'].includes(action.actionType)) {
             toast.info(action.description)
 
-            // Handle Blind Swap Visuals
-            if (action.actionType === 'power_blind_swap' && action.metadata) {
-                const { swapSourceCardId, swapTargetCardId } = action.metadata as any
-                if (swapSourceCardId && swapTargetCardId) {
-                    setHighlightedCardIds([swapSourceCardId, swapTargetCardId])
-                    // Clear after 3 seconds
+            // Universal Visual Highlight
+            if (action.metadata && action.metadata.highlightedCardIds) {
+                // Cast to array of strings
+                const ids = action.metadata.highlightedCardIds as string[]
+                if (ids && ids.length > 0) {
+                    setHighlightedCardIds(ids)
                     setTimeout(() => setHighlightedCardIds([]), 3000)
                 }
             }

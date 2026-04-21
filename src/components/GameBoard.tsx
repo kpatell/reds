@@ -119,16 +119,11 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         // "When I am the opponent, player 1's cards should be grayed out" (Standard)
                         className={!isOpponentHandInteractive ? "opacity-50 transition-opacity" : ""}
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
-                        // Logic for what "Yellow Ring" (active viewing) to show on Opponent's Hand:
-                        // 1. Standard: If they are peeking at their own card (power_peek_self).
-                        // 2. Power 9/10 Step 2: They have selected a card in THEIR hand (swapSource) and are now looking at mine. 
-                        //    But we still want to show that THEIR card is "active/selected".
-                        //    So if they have a swapSourceCardId, that is the card in THEIR hand we should highlight.
-                        viewingCardId={(!isMyTurn && opponent?.swapSourceCardId) ? opponent.swapSourceCardId : currentPlayer?.viewingCardId}
-                        // CRITICAL FIX: Do NOT reveal the card value to me if I am just seeing what the opponent is looking at in their own hand!
-                        revealViewedCard={!!currentPlayer?.viewingCardId} // Only reveal if *I* am the one viewing it
+                        selectedCardId={(isPowerBlindSwapPhase || isPowerLookSwapPhase || isPowerLookSwapDecisionPhase) ? opponent?.swapSourceCardId : undefined}
+                        viewingCardId={currentPlayer?.viewingCardId}
+                        revealViewedCard={!!currentPlayer?.viewingCardId}
                         highlightedCardIds={highlightedCardIds}
-                        beingViewedCardId={opponent?.viewingCardId}
+                        beingViewedCardIds={[opponent?.viewingCardId, isPowerLookSwapDecisionPhase ? opponent?.swapSourceCardId : null]}
                     />
                 ) : (
                     <div className="text-[var(--color-text-muted)] animate-pulse rotate-180 text-sm">
