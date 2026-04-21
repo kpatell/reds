@@ -40,6 +40,8 @@ describe('Game Engine', () => {
     game = setPlayerReady(game, 'p2')
     
     game = drawCard(game, 'p1', 'deck')
+    // Force a non-power card to ensure standard discard behavior
+    game.drawnCard = { ...game.drawnCard!, rank: '2' }
     const drawnCardId = game.drawnCard!.id
     
     game = discardDrawnCard(game, 'p1')

@@ -1,11 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '@/components/AuthProvider'
 import { useGameState } from '@/hooks/useGameState'
 import { GameBoard } from '@/components/GameBoard'
+import { ScaleContainer } from '@/components/ScaleContainer'
 import { supabase } from '@/lib/supabase'
-import { initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady } from '@/lib/game/engine'
+import {
+    initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady,
+    resolvePowerPeekSelf, resolvePowerPeekOpponent, finishPeek,
+    resolvePowerLookSwapDecision, resolvePowerBlindSwap, resolvePowerLookSwap
+} from '@/lib/game/engine'
 import type { Database, Json } from '@/types/supabase'
 
 
@@ -13,6 +19,38 @@ export default function Game() {
     const { gameId } = useParams()
     const { user, signInAnonymously, loading: authLoading } = useAuth()
     const { gameState, loading: gameLoading, error } = useGameState(gameId!)
+
+    const [highlightedCardIds, setHighlightedCardIds] = useState<string[]>([])
+
+    // Effect for notifications based on lastAction
+    useEffect(() => {
+        if (!gameState?.lastGameAction) return
+
+        const action = gameState.lastGameAction
+        const actionTime = new Date(gameState.lastActionAt).getTime()
+        const now = new Date().getTime()
+
+        if (now - actionTime > 5000) return // Reduce timeout to avoid old toasts
+
+        // Handle Notifications & Visuals
+        if (['swap', 'power_peek_self', 'power_peek_opponent', 'power_blind_swap', 'power_look_swap'].includes(action.actionType)) {
+            toast.info(action.description)
+
+            // Universal Visual Highlight
+            if (action.metadata && action.metadata.highlightedCardIds) {
+                // Cast to array of strings
+                const ids = action.metadata.highlightedCardIds as string[]
+                if (ids && ids.length > 0) {
+                    setHighlightedCardIds(ids)
+                    setTimeout(() => setHighlightedCardIds([]), 3000)
+                }
+            }
+        }
+
+        if (action.actionType === 'power_skip') {
+            toast.info("Opponent declined to swap (Power 9)")
+        }
+    }, [gameState?.lastActionAt, gameState?.lastGameAction])
 
     // Auto-sign in for guests accessing via link
     useEffect(() => {
@@ -117,7 +155,7 @@ export default function Game() {
     }
 
     const handleGameUpdate = async (newGameState: any) => {
-        const updatePayload: Database['public']['Tables']['games']['Update'] = {
+        const updatePayload: any = {
             status: newGameState.status,
             deck: newGameState.deck as unknown as Json,
             discard_pile: newGameState.discardPile as unknown as Json,
@@ -128,15 +166,23 @@ export default function Game() {
             drawn_card: newGameState.drawnCard
                 ? { ...newGameState.drawnCard, source: newGameState.drawnCardSource } as unknown as Json
                 : null,
-            last_action_at: new Date().toISOString()
+            last_action_at: new Date().toISOString(),
+            // Ensure lastGameAction is synced to DB so opponent gets notifications
+            last_game_action: newGameState.lastGameAction as unknown as Json
         }
+
+        console.log('[Game Update] Sending payload:', updatePayload)
 
         const { error } = await (supabase
             .from('games') as any)
             .update(updatePayload)
             .eq('id', gameId)
 
-        if (error) console.error('Error updating game:', error)
+        if (error) {
+            console.error('[Game Update] Update FAILED:', error)
+        } else {
+            console.log('[Game Update] Update SUCCESS')
+        }
     }
 
     const handleDraw = async (source: 'deck' | 'discard') => {
@@ -180,26 +226,91 @@ export default function Game() {
         }
     }
 
+    const handleResolvePower = async (targetCardId: string) => {
+        if (!gameState || !user) return
+
+        try {
+            let newGameState
+            if (gameState.turnPhase === 'power_peek_self') {
+                newGameState = resolvePowerPeekSelf(gameState, user.id, targetCardId)
+            } else if (gameState.turnPhase === 'power_peek_opponent') {
+                newGameState = resolvePowerPeekOpponent(gameState, user.id, targetCardId)
+            } else if (gameState.turnPhase === 'power_blind_swap') {
+                newGameState = resolvePowerBlindSwap(gameState, user.id, targetCardId)
+            } else if (gameState.turnPhase === 'power_look_swap') {
+                newGameState = resolvePowerLookSwap(gameState, user.id, targetCardId)
+            } else {
+                return
+            }
+
+            // Use handleGameUpdate to send the FULL state, preventing deck data loss
+            await handleGameUpdate(newGameState)
+
+        } catch (error: any) {
+            console.error('Error resolving power:', error)
+            // toast.error(error.message)
+        }
+    }
+
+    async function handleFinishPeek() {
+        if (!gameId || !user) return
+        try {
+            const newState = finishPeek(gameState!, user.id)
+            await handleGameUpdate(newState)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to finish peek')
+        }
+    }
+
+    async function handlePowerLookSwapDecision(action: 'swap' | 'keep') {
+        if (!gameId || !user) return
+        try {
+            const newState = resolvePowerLookSwapDecision(gameState!, user.id, action)
+            await handleGameUpdate(newState)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to resolve decision')
+        }
+    }
+
+    async function handleSkipPower() {
+        if (!gameId || !user) return
+        try {
+            const { skipPower } = await import('@/lib/game/engine') // Dynamic import to ensure latest engine
+            const newState = skipPower(gameState!, user.id)
+            await handleGameUpdate(newState)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to skip power')
+        }
+    }
+
     if (!gameState) {
         return (
-            <div className="min-h-screen flex items-center justify-center flex-col gap-4">
-                <div className="text-xl font-bold text-[var(--color-text-muted)]">Game not found</div>
-                <div className="text-sm text-[var(--color-text-muted)]">ID: {gameId}</div>
-                <div className="text-xs text-red-400">Debug: User={user ? 'Yes' : 'No'}, AuthLoading={authLoading ? 'Yes' : 'No'}</div>
+            <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+                <div className="text-xl font-bold text-red-600">Game not found</div>
+                <div className="text-sm text-gray-500">ID: {gameId}</div>
+                <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-500 text-white rounded">
+                    Retry
+                </button>
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-[var(--color-background)]">
-            <GameBoard
-                gameState={gameState}
-                onDraw={handleDraw}
-                onDiscard={handleDiscard}
-                onSwap={handleSwap}
-                onReady={handleReady}
-            />
+        <div className="min-h-screen bg-[var(--color-background)] overflow-hidden">
+            <ScaleContainer>
+                <GameBoard
+                    gameState={gameState}
+                    onDraw={handleDraw}
+                    onDiscard={handleDiscard}
+                    onSwap={handleSwap}
+                    onReady={handleReady}
+                    onResolvePower={handleResolvePower}
+                    onFinishPeek={handleFinishPeek}
+                    onPowerLookSwapDecision={handlePowerLookSwapDecision}
+                    onSkipPower={handleSkipPower}
+                    highlightedCardIds={highlightedCardIds}
+                />
+            </ScaleContainer>
         </div>
     )
 }
-
