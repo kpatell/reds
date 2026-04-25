@@ -57,19 +57,19 @@ describe('Game Engine', () => {
     game = setPlayerReady(game, 'p1')
     game = setPlayerReady(game, 'p2')
     
-    const handCardId = game.players['p1'].hand[0].id
+    const handCardId = game.players['p1'].hand[0]!.id
     
     game = drawCard(game, 'p1', 'deck')
     const drawnCardId = game.drawnCard!.id
     
-    game = swapCard(game, 'p1', handCardId)
+    const newState2 = swapCard(game, 'p1', handCardId)
 
-    expect(game.turnPhase).toBe('draw')
-    expect(game.drawnCard).toBeNull()
-    expect(game.currentTurnPlayerId).toBe('p2')
+    expect(newState2.turnPhase).toBe('draw')
+    expect(newState2.drawnCard).toBeNull()
+    expect(newState2.currentTurnPlayerId).toBe('p2')
     
     // Check swap
-    expect(game.players['p1'].hand[0].id).toBe(drawnCardId)
-    expect(game.discardPile[game.discardPile.length - 1].id).toBe(handCardId)
+    expect(newState2.players['p1'].hand[0]!.id).toBe(drawnCardId)
+    expect(newState2.discardPile[newState2.discardPile.length - 1].id).toBe(handCardId)
   })
 })

@@ -50,6 +50,25 @@ export default function Game() {
         if (action.actionType === 'power_skip') {
             toast.info("Opponent declined to swap (Power 9)")
         }
+
+        if (action.actionType === 'stack_failed') {
+            toast.error(action.description)
+        }
+        
+        if (action.actionType === 'stack_success') {
+            toast.success(action.description)
+            if (action.metadata && action.metadata.highlightedCardIds) {
+                const ids = action.metadata.highlightedCardIds as string[]
+                if (ids && ids.length > 0) {
+                    setHighlightedCardIds(ids)
+                    setTimeout(() => setHighlightedCardIds([]), 3000)
+                }
+            }
+        }
+
+        if (action.actionType === 'stack_transfer') {
+            toast.success(action.description)
+        }
     }, [gameState?.lastActionAt, gameState?.lastGameAction])
 
     // Auto-sign in for guests accessing via link
@@ -283,6 +302,58 @@ export default function Game() {
         }
     }
 
+    const handleStack = async (handCardId: string, targetDiscardCardId: string) => {
+        if (!gameState || !user || !gameId) return
+
+        try {
+            const { data, error } = await supabase.rpc('attempt_stack', {
+                p_game_id: gameId,
+                p_player_id: user.id,
+                p_hand_card_id: handCardId,
+                p_target_discard_card_id: targetDiscardCardId
+            })
+
+            if (error) throw error
+
+            const result = data as { success?: boolean; action?: any }
+
+            if (result && !result.success) {
+                const action = result.action
+                if (action && action.description) {
+                    toast.error(action.description)
+                } else {
+                    toast.error('Stack failed!')
+                }
+            } else if (result && result.success) {
+                // Let the realtime subscription sync it fully, but we keep optimistic for now
+            }
+        } catch (error: any) {
+            console.error('Stack error:', error)
+            toast.error(error.message || 'Failed to stack card')
+        }
+    }
+
+    const handleTransfer = async (handCardId: string) => {
+        if (!gameState || !user || !gameId) return
+
+        try {
+            const { data, error } = await supabase.rpc('resolve_stack_transfer', {
+                p_game_id: gameId,
+                p_player_id: user.id,
+                p_hand_card_id: handCardId
+            })
+
+            if (error) throw error
+            const result = data as { success?: boolean; error?: string }
+            if (result && !result.success) {
+                toast.error(result.error || 'Failed to transfer card')
+            }
+        } catch (error: any) {
+            console.error('Transfer error:', error)
+            toast.error(error.message || 'Failed to transfer card')
+        }
+    }
+
     if (!gameState) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen gap-4">
@@ -308,6 +379,8 @@ export default function Game() {
                     onFinishPeek={handleFinishPeek}
                     onPowerLookSwapDecision={handlePowerLookSwapDecision}
                     onSkipPower={handleSkipPower}
+                    onStack={handleStack}
+                    onTransfer={handleTransfer}
                     highlightedCardIds={highlightedCardIds}
                 />
             </ScaleContainer>

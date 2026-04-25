@@ -11,16 +11,39 @@ interface PlayerHandProps {
     overrideFaceUp?: number[] // Indices of cards to force face up
     cardClassName?: string
     highlightedCardIds?: string[]
+    isDebug?: boolean
+    maxCols?: number
 }
 
 
 
-export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId, beingViewedCardIds = [], isInteractive, revealViewedCard = true, highlightedCardIds = [] }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null, beingViewedCardIds?: (string | null | undefined)[], isInteractive?: boolean, revealViewedCard?: boolean }) {
+export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId, beingViewedCardIds = [], isInteractive, revealViewedCard = true, highlightedCardIds = [], isDebug = false, maxCols }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null, beingViewedCardIds?: (string | null | undefined)[], isInteractive?: boolean, revealViewedCard?: boolean }) {
+
+    // DO NOT filter nulls so cards stay in their exact positions
+    const visualHand = [...player.hand]
+
+    // Pad to a minimum of 4 slots to maintain the 2x2 base grid
+    while (visualHand.length < 4) {
+        visualHand.push(null as any)
+    }
+
+    // 3. Grid Columns uses maxCols if provided (so both players' grids align), fallback to visual hand length
+    const cols = maxCols || Math.max(2, Math.ceil(visualHand.length / 2))
 
     return (
         <div className={cn("flex flex-col items-center gap-2", className)}>
-            <div className="grid grid-cols-2 gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
-                {player.hand.map((card, index) => {
+            <div
+                className="grid justify-center max-w-full gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm"
+                style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, auto))` }}
+            >
+                {visualHand.map((card, index) => {
+                    if (!card) {
+                        return (
+                            <div key={`empty-${index}`} className="relative group flex items-center justify-center border-2 border-dashed border-[var(--color-border)] rounded-xl aspect-[63/88] w-20 sm:w-24 md:w-28 opacity-50 bg-black/5">
+                            </div>
+                        )
+                    }
+
                     const isViewing = viewingCardId === card.id
                     const isBeingViewedByOpponent = beingViewedCardId === card.id || beingViewedCardIds.includes(card.id)
                     const isHighlighted = highlightedCardIds?.includes(card.id)
@@ -40,6 +63,8 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
                                 card={shouldShowFaceUp ? { ...card, isFaceUp: true } : card}
                                 onClick={() => onCardClick?.(card)}
                                 isSelected={selectedCardId === card.id}
+                                isDebug={isDebug}
+                                isOpponent={!isCurrentUser}
                                 className={cn(
                                     (!isCurrentUser && !isInteractive) && "cursor-default hover:translate-y-0",
                                     cardClassName,

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { Card } from '@/components/Card'
 import { PlayerHand } from '@/components/PlayerHand'
@@ -15,10 +16,13 @@ interface GameBoardProps {
     onFinishPeek?: () => void
     onPowerLookSwapDecision?: (action: 'swap' | 'keep') => void
     onSkipPower?: () => void
+    onStack?: (handCardId: string, targetDiscardCardId: string) => void
+    onTransfer?: (handCardId: string) => void
     highlightedCardIds?: string[]
 }
 
-export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower, highlightedCardIds }: GameBoardProps) {
+export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower, onStack, onTransfer, highlightedCardIds }: GameBoardProps) {
+    const [isDebugMode, setIsDebugMode] = useState(false)
     const { user } = useAuth()
 
     if (!user) {
@@ -48,38 +52,63 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     const showDrawnCard = isMyTurn || gameState.drawnCardSource === 'discard'
 
     // Interaction & Gray-out Logic
-    const isPowerActionStep2 = (isPowerBlindSwapPhase || isPowerLookSwapPhase) && !!currentPlayer.swapSourceCardId
+    const isPowerActionStep2 = (isPowerBlindSwapPhase || isPowerLookSwapPhase) && !!currentPlayer?.swapSourceCardId
 
     // Define where the "Viewing" focus is
-    const viewingOwnCard = isPowerPeekViewingPhase && !!currentPlayer.viewingCardId && currentPlayer.hand.some(c => c.id === currentPlayer.viewingCardId)
-    const viewingOpponentCard = isPowerPeekViewingPhase && !!currentPlayer.viewingCardId && !viewingOwnCard
+    const viewingOwnCard = isPowerPeekViewingPhase && !!currentPlayer?.viewingCardId && currentPlayer.hand.some(c => c && c.id === currentPlayer.viewingCardId)
+    const viewingOpponentCard = isPowerPeekViewingPhase && !!currentPlayer?.viewingCardId && !viewingOwnCard
 
-    const isOpponentHandInteractive = isMyTurn && (
-        isPowerPeekOpponentPhase ||
-        isPowerActionStep2 ||
-        viewingOpponentCard ||
-        isPowerLookSwapDecisionPhase
+    const isStackTransferPhase = !!gameState.pendingStackTransfer
+    const amITransferring = isStackTransferPhase && gameState.pendingStackTransfer?.playerId === currentPlayer?.id
+    const opponentIsTransferring = isStackTransferPhase && gameState.pendingStackTransfer?.playerId === opponent?.id
+
+    const isOpponentHandInteractive = !isStackTransferPhase && (
+        !!topCard || (isMyTurn && (
+            isPowerPeekOpponentPhase ||
+            isPowerActionStep2 ||
+            viewingOpponentCard ||
+            isPowerLookSwapDecisionPhase
+        ))
     )
 
-    // Gray-out logic for MY hand:
-    // Active if:
-    // 1. Peek Phase (Game Start)
-    // 2. It's my turn AND:
-    //    a. NOT interacting with opponent (Powers 8, 9, 10 step 2)
-    //    b. OR It IS the Look & Swap Decision phase (Power 10) - to keep it visible
-    // 3. Exception: If I am viewing my OWN card (Power 7), it should stay active.
-    const isMyHandInteractive = isPeekPhase || (isMyTurn && (
-        (!isPowerPeekOpponentPhase && (!isPowerPeekViewingPhase || viewingOwnCard) && !isPowerActionStep2) ||
-        isPowerLookSwapDecisionPhase
+    const isMyHandInteractive = amITransferring || (!isStackTransferPhase && (
+        !!topCard || isPeekPhase || (isMyTurn && (
+            (!isPowerPeekOpponentPhase && (!isPowerPeekViewingPhase || viewingOwnCard) && !isPowerActionStep2) ||
+            isPowerLookSwapDecisionPhase
+        ))
     ))
+
+    const p1Length = currentPlayer?.hand.length || 0
+    const p2Length = opponent?.hand.length || 0
+    // The visual minimum is 4 cards
+    const maxHandSize = Math.max(p1Length, p2Length, 4)
+    
+    // Calculate the maximum columns needed by either player
+    const maxCols = Math.max(2, Math.ceil(maxHandSize / 2))
+
+    // Expand the center width based on columns to avoid overlapping the deck/discard
+    const centerMaxWidth = maxCols >= 6 ? "max-w-7xl" :
+                           maxCols >= 5 ? "max-w-6xl" :
+                           maxCols >= 4 ? "max-w-5xl" : "max-w-4xl" // Minimum width for minimalist feel
 
     return (
         <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-8 gap-12 relative justify-between">
             {/* Header: Leave Game & Turn Info */}
             <div className="flex justify-between items-center z-20 px-4 absolute top-6 left-6 right-6">
-                <a href="/" className="text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex items-center gap-2">
-                    ← Leave
-                </a>
+                <div className="flex items-center gap-4">
+                    <a href="/" className="text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex items-center gap-2">
+                        ← Leave
+                    </a>
+                    <button 
+                        onClick={() => {
+                            console.log("DEV Mode Toggled to:", !isDebugMode)
+                            setIsDebugMode(!isDebugMode)
+                        }}
+                        className={cn("text-xs font-bold px-2 py-1 rounded transition-colors", isDebugMode ? "bg-red-500 text-white" : "bg-gray-200 text-gray-500")}
+                    >
+                        DEV
+                    </button>
+                </div>
 
                 {!isPeekPhase && (
                     <div className={cn(
@@ -110,20 +139,27 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         isCurrentUser={false}
                         isInteractive={isOpponentHandInteractive}
                         onCardClick={(card) => {
-                            if ((isPowerPeekOpponentPhase || isPowerBlindSwapPhase || isPowerLookSwapPhase) && isMyTurn) {
+                            if (isStackTransferPhase) return;
+                            if (isMyTurn && isPowerPeekOpponentPhase) {
                                 onResolvePower?.(card.id)
+                            } else if (isMyTurn && isPowerActionStep2) {
+                                onResolvePower?.(card.id)
+                            } else if (topCard && !isPeekPhase && !isPowerPeekViewingPhase && !isPowerLookSwapDecisionPhase) {
+                                onStack?.(card.id, topCard.id)
                             }
                         }}
                         // Gray out opponent hand if not interactive (e.g. standard turn, or opponent turn)
                         // User Request: "When I am player 1, my opponent's cards should be grayed out" (Standard)
                         // "When I am the opponent, player 1's cards should be grayed out" (Standard)
-                        className={!isOpponentHandInteractive ? "opacity-50 transition-opacity" : ""}
+                        className={!isOpponentHandInteractive ? "pointer-events-none" : ""}
                         cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                         selectedCardId={(isPowerBlindSwapPhase || isPowerLookSwapPhase || isPowerLookSwapDecisionPhase) ? opponent?.swapSourceCardId : undefined}
                         viewingCardId={currentPlayer?.viewingCardId}
                         revealViewedCard={!!currentPlayer?.viewingCardId}
                         highlightedCardIds={highlightedCardIds}
                         beingViewedCardIds={[opponent?.viewingCardId, isPowerLookSwapDecisionPhase ? opponent?.swapSourceCardId : null]}
+                        isDebug={isDebugMode}
+                        maxCols={maxCols}
                     />
                 ) : (
                     <div className="text-[var(--color-text-muted)] animate-pulse rotate-180 text-sm">
@@ -133,7 +169,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             </div>
 
             {/* Center Area (Decks & Drawn Card) */}
-            <div className="flex-none flex items-center justify-between px-8 sm:px-16 md:px-32 py-4 relative w-full z-10 max-w-4xl mx-auto">
+            <div className={cn("flex-none flex items-center justify-between px-8 sm:px-16 md:px-32 py-4 relative w-full z-10 mx-auto transition-all duration-500", centerMaxWidth)}>
 
                 {/* Draw Pile (Left) */}
                 <div
@@ -312,25 +348,53 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                             </div>
                         )}
 
+                        {/* Pending Transfer Alert */}
+                        {amITransferring && (
+                            <div className="absolute -top-20 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 w-max animate-bounce">
+                                <div className="bg-red-500 border border-red-700 px-6 py-2 rounded-xl shadow-lg text-sm font-bold text-white text-center">
+                                    Select one of your cards to give to the opponent!
+                                </div>
+                                <div className="w-2 h-2 bg-red-500 border-b border-r border-red-700 absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
+                            </div>
+                        )}
+                        {opponentIsTransferring && (
+                            <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-40 w-max">
+                                <div className="bg-gray-100 border border-gray-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-gray-700">
+                                    Opponent is transferring a card...
+                                </div>
+                            </div>
+                        )}
+
                         <PlayerHand
                             player={currentPlayer}
                             isCurrentUser={true}
                             onCardClick={(card) => {
+                                if (amITransferring) {
+                                    onTransfer?.(card.id)
+                                    return
+                                }
+                                if (isStackTransferPhase) return;
+
                                 if (gameState.drawnCard && isMyTurn && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase) {
                                     onSwap?.(card.id)
                                 } else if ((isPowerPeekSelfPhase || isPowerBlindSwapPhase || isPowerLookSwapPhase) && isMyTurn) {
                                     onResolvePower?.(card.id)
+                                } else if (topCard && !isPeekPhase && !isPowerPeekViewingPhase && !isPowerLookSwapDecisionPhase) {
+                                    // Try to stack if not doing another action
+                                    onStack?.(card.id, topCard.id)
                                 }
                             }}
                             selectedCardId={isPowerBlindSwapPhase || isPowerLookSwapPhase || isPowerLookSwapDecisionPhase ? currentPlayer.swapSourceCardId : undefined}
                             // Gray out logic restored:
-                            className={!isMyHandInteractive ? "opacity-50 transition-opacity pointer-events-none" : ""}
+                            className={!isMyHandInteractive ? "pointer-events-none" : ""}
                             overrideFaceUp={isPeekPhase ? [2, 3] : undefined}
                             cardClassName="w-16 h-24 sm:w-20 sm:h-32 md:w-24 md:h-36 lg:w-28 lg:h-40"
                             viewingCardId={isPowerLookSwapDecisionPhase ? currentPlayer.swapSourceCardId : currentPlayer.viewingCardId}
                             // If opponent is viewing one of MY cards, show it as being viewed
                             highlightedCardIds={highlightedCardIds}
                             beingViewedCardId={opponent?.viewingCardId}
+                            isDebug={isDebugMode}
+                            maxCols={maxCols}
                         />
 
                         {isPeekPhase && !currentPlayer.isReady && (

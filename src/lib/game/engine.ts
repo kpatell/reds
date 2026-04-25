@@ -210,7 +210,7 @@ export function resolvePowerBlindSwap(state: GameState, playerId: string, target
 
     // Step 1: Select own card
     if (!player.swapSourceCardId) {
-        const card = player.hand.find(c => c.id === targetCardId)
+        const card = player.hand.find(c => c?.id === targetCardId)
         if (!card) throw new Error('Must select one of your own cards first')
         
         player.swapSourceCardId = targetCardId
@@ -224,7 +224,7 @@ export function resolvePowerBlindSwap(state: GameState, playerId: string, target
 
     for (const pid of Object.keys(newState.players)) {
         if (pid === playerId) continue
-        const idx = newState.players[pid].hand.findIndex(c => c.id === targetCardId)
+        const idx = newState.players[pid].hand.findIndex(c => c?.id === targetCardId)
         if (idx !== -1) {
             opponentId = pid
             opponentCardIndex = idx
@@ -234,7 +234,7 @@ export function resolvePowerBlindSwap(state: GameState, playerId: string, target
 
     if (!opponentId || opponentCardIndex === -1) {
         // Allow changing own selection if they click their own card again?
-        const myCard = player.hand.find(c => c.id === targetCardId)
+        const myCard = player.hand.find(c => c?.id === targetCardId)
         if (myCard) {
             player.swapSourceCardId = targetCardId // Change selection
             newState.lastActionAt = new Date().toISOString()
@@ -244,7 +244,7 @@ export function resolvePowerBlindSwap(state: GameState, playerId: string, target
     }
 
     const opponent = newState.players[opponentId]
-    const myCardIndex = player.hand.findIndex(c => c.id === player.swapSourceCardId)
+    const myCardIndex = player.hand.findIndex(c => c?.id === player.swapSourceCardId)
     
     if (myCardIndex === -1) throw new Error('Selected source card not found')
 
@@ -287,7 +287,7 @@ export function resolvePowerLookSwap(state: GameState, playerId: string, targetC
 
     // Step 1: Select own card
     if (!player.swapSourceCardId) {
-        const card = player.hand.find(c => c.id === targetCardId)
+        const card = player.hand.find(c => c?.id === targetCardId)
         if (!card) throw new Error('Must select one of your own cards first')
         
         // Reveal my card to ME (add to knownBy)
@@ -306,7 +306,7 @@ export function resolvePowerLookSwap(state: GameState, playerId: string, targetC
 
     for (const pid of Object.keys(newState.players)) {
         if (pid === playerId) continue
-        const card = newState.players[pid].hand.find(c => c.id === targetCardId)
+        const card = newState.players[pid].hand.find(c => c?.id === targetCardId)
         if (card) {
             opponentId = pid
             opponentCard = card
@@ -316,7 +316,7 @@ export function resolvePowerLookSwap(state: GameState, playerId: string, targetC
 
     if (!opponentId || !opponentCard) {
         // Allow changing own selection
-        const myCard = player.hand.find(c => c.id === targetCardId)
+        const myCard = player.hand.find(c => c?.id === targetCardId)
         if (myCard) {
             // Reveal new card
             if (!myCard.knownBy) myCard.knownBy = []
@@ -363,7 +363,7 @@ export function resolvePowerLookSwapDecision(state: GameState, playerId: string,
     if (!player.swapSourceCardId || !player.viewingCardId) throw new Error('Invalid state for decision')
 
     if (action === 'swap') {
-        const myCardIndex = player.hand.findIndex(c => c.id === player.swapSourceCardId)
+        const myCardIndex = player.hand.findIndex(c => c?.id === player.swapSourceCardId)
         
         // Find opponent card
         let opponentId: string | undefined
@@ -371,7 +371,7 @@ export function resolvePowerLookSwapDecision(state: GameState, playerId: string,
 
         for (const pid of Object.keys(newState.players)) {
             if (pid === playerId) continue
-            const idx = newState.players[pid].hand.findIndex(c => c.id === player.viewingCardId)
+            const idx = newState.players[pid].hand.findIndex(c => c?.id === player.viewingCardId)
             if (idx !== -1) {
                 opponentId = pid
                 opponentCardIndex = idx
@@ -419,7 +419,7 @@ export function resolvePowerPeekSelf(state: GameState, playerId: string, targetC
 
     const newState = structuredClone(state)
     const player = newState.players[playerId]
-    const card = player.hand.find(c => c.id === targetCardId)
+    const card = player.hand.find(c => c?.id === targetCardId)
 
     if (!card) throw new Error('Card not found in your hand')
 
@@ -461,7 +461,7 @@ export function resolvePowerPeekOpponent(state: GameState, playerId: string, tar
 
     for (const pid of Object.keys(newState.players)) {
         if (pid === playerId) continue
-        const card = newState.players[pid].hand.find(c => c.id === targetCardId)
+        const card = newState.players[pid].hand.find(c => c?.id === targetCardId)
         if (card) {
             targetCard = card
             break
@@ -509,11 +509,12 @@ export function swapCard(state: GameState, playerId: string, targetCardId: strin
 
   const newState = structuredClone(state)
   const player = newState.players[playerId]
-  const targetIndex = player.hand.findIndex(c => c.id === targetCardId)
+  const targetIndex = player.hand.findIndex(c => c?.id === targetCardId)
 
   if (targetIndex === -1) throw new Error('Card not found in hand')
 
   const oldCard = player.hand[targetIndex]
+  if (!oldCard) throw new Error('Card is null')
   
   // Refinement: Swapped card goes into hand FACE DOWN
   // It is known by the player who swapped it in (obviously)

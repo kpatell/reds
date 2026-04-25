@@ -15,12 +15,12 @@ export type Deck = Card[]
 export interface PlayerState {
   id: string
   username: string
-  hand: Card[] // 4 cards
+  hand: (Card | null)[] // Supports null for empty slots
   isReady: boolean
   hasCalledReds: boolean
   roundsWon: number
-  viewingCardId?: string | null // ID of the card currently being viewed (Power 7/8)
-  swapSourceCardId?: string | null // ID of own card selected for swap (Power 9/10)
+  viewingCardId?: string | null
+  swapSourceCardId?: string | null
 }
 
 export type TurnPhase = 
@@ -42,12 +42,17 @@ export interface GameState {
   players: Record<string, PlayerState>
   currentTurnPlayerId: string | null
   turnPhase: TurnPhase
-  drawnCard: Card | null // The card currently drawn by the active player
+  drawnCard: Card | null
   drawnCardSource?: 'deck' | 'discard' | null
-  lastActionAt: string // ISO timestamp
+  pendingStackTransfer?: {
+    playerId: string; // The player who needs to give a card
+    targetPlayerId: string; // The opponent who receives it
+    slotIndex: number; // The exact slot in the opponent's hand
+  } | null
+  lastActionAt: string
   lastGameAction?: {
       playerId: string;
-      actionType: 'draw' | 'discard' | 'swap' | 'power_peek_self' | 'power_peek_opponent' | 'power_blind_swap' | 'power_look_swap' | 'power_skip';
+      actionType: 'draw' | 'discard' | 'swap' | 'power_peek_self' | 'power_peek_opponent' | 'power_blind_swap' | 'power_look_swap' | 'power_skip' | 'stack_success' | 'stack_failed' | 'stack_transfer';
       description: string;
       metadata?: {
           swapSourceCardId?: string | null
