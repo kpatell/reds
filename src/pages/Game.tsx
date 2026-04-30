@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/components/AuthProvider'
 import { useGameState } from '@/hooks/useGameState'
 import { GameBoard } from '@/components/GameBoard'
-import { ScaleContainer } from '@/components/ScaleContainer'
+
 import { supabase } from '@/lib/supabase'
 import {
     initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady,
@@ -21,6 +21,7 @@ export default function Game() {
     const { gameState, loading: gameLoading, error } = useGameState(gameId!)
 
     const [highlightedCardIds, setHighlightedCardIds] = useState<string[]>([])
+    const [isDebugMode, setIsDebugMode] = useState(false)
 
     // Effect for notifications based on lastAction
     useEffect(() => {
@@ -49,6 +50,39 @@ export default function Game() {
 
         if (action.actionType === 'power_skip') {
             toast.info("Opponent declined to swap (Power 9)")
+        }
+
+        if (action.actionType === 'stack_failed') {
+            toast.error(action.description)
+            if (action.metadata && action.metadata.highlightedCardIds) {
+                const ids = action.metadata.highlightedCardIds as string[]
+                if (ids && ids.length > 0) {
+                    setHighlightedCardIds(ids)
+                    setTimeout(() => setHighlightedCardIds([]), 3000)
+                }
+            }
+        }
+        
+        if (action.actionType === 'stack_success') {
+            toast.success(action.description)
+            if (action.metadata && action.metadata.highlightedCardIds) {
+                const ids = action.metadata.highlightedCardIds as string[]
+                if (ids && ids.length > 0) {
+                    setHighlightedCardIds(ids)
+                    setTimeout(() => setHighlightedCardIds([]), 3000)
+                }
+            }
+        }
+
+        if (action.actionType === 'stack_transfer') {
+            toast.success(action.description)
+            if (action.metadata && action.metadata.highlightedCardIds) {
+                const ids = action.metadata.highlightedCardIds as string[]
+                if (ids && ids.length > 0) {
+                    setHighlightedCardIds(ids)
+                    setTimeout(() => setHighlightedCardIds([]), 3000)
+                }
+            }
         }
     }, [gameState?.lastActionAt, gameState?.lastGameAction])
 
@@ -283,6 +317,48 @@ export default function Game() {
         }
     }
 
+    const handleStack = async (handCardId: string, targetDiscardCardId: string) => {
+        if (!gameState || !user || !gameId) return
+
+        try {
+            const { error } = await supabase.rpc('attempt_stack', {
+                p_game_id: gameId,
+                p_player_id: user.id,
+                p_hand_card_id: handCardId,
+                p_target_discard_card_id: targetDiscardCardId
+            })
+
+            if (error) throw error
+
+            // Toast is handled by the realtime subscription (stack_failed / stack_success)
+            // so we don't show one here to avoid duplicate notifications
+        } catch (error: unknown) {
+            console.error('Stack error:', error)
+            toast.error(error instanceof Error ? error.message : 'Failed to stack card')
+        }
+    }
+
+    const handleTransfer = async (handCardId: string) => {
+        if (!gameState || !user || !gameId) return
+
+        try {
+            const { data, error } = await supabase.rpc('resolve_stack_transfer', {
+                p_game_id: gameId,
+                p_player_id: user.id,
+                p_hand_card_id: handCardId
+            })
+
+            if (error) throw error
+            const result = data as { success?: boolean; error?: string }
+            if (result && !result.success) {
+                toast.error(result.error || 'Failed to transfer card')
+            }
+        } catch (error: any) {
+            console.error('Transfer error:', error)
+            toast.error(error.message || 'Failed to transfer card')
+        }
+    }
+
     if (!gameState) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen gap-4">
@@ -295,22 +371,50 @@ export default function Game() {
         )
     }
 
+    const isMyTurn = gameState.currentTurnPlayerId === user?.id
+    const isPeekPhase = gameState.turnPhase === 'peek'
+
     return (
-        <div className="min-h-screen bg-[var(--color-background)] overflow-hidden">
-            <ScaleContainer>
-                <GameBoard
-                    gameState={gameState}
-                    onDraw={handleDraw}
-                    onDiscard={handleDiscard}
-                    onSwap={handleSwap}
-                    onReady={handleReady}
-                    onResolvePower={handleResolvePower}
-                    onFinishPeek={handleFinishPeek}
-                    onPowerLookSwapDecision={handlePowerLookSwapDecision}
-                    onSkipPower={handleSkipPower}
-                    highlightedCardIds={highlightedCardIds}
-                />
-            </ScaleContainer>
+        <div className="h-dvh bg-[var(--color-background)] overflow-hidden relative">
+            {/* Header: Absolutely positioned over the game board */}
+            <div className="flex justify-between items-center z-30 px-6 absolute top-2 left-0 right-0">
+                <div className="flex items-center gap-4">
+                    <a href="/" className="text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex items-center gap-2">
+                        ← Leave
+                    </a>
+                    <button
+                        onClick={() => setIsDebugMode(!isDebugMode)}
+                        className={isDebugMode ? "text-xs font-bold px-2 py-1 rounded transition-colors bg-red-500 text-white" : "text-xs font-bold px-2 py-1 rounded transition-colors bg-gray-200 text-gray-500 hover:bg-gray-300 focus-visible:ring-2 focus-visible:ring-gray-400"}
+                    >
+                        DEV
+                    </button>
+                </div>
+
+                {!isPeekPhase && (
+                    <div className={isMyTurn
+                        ? "px-4 py-2 rounded-full font-bold text-sm transition-all duration-300 shadow-md bg-[var(--color-primary)] text-white"
+                        : "px-4 py-2 rounded-full font-bold text-sm transition-all duration-300 shadow-md bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)] opacity-80"
+                    }>
+                        {isMyTurn ? "YOUR TURN" : "OPPONENT'S TURN"}
+                    </div>
+                )}
+            </div>
+
+            <GameBoard
+                gameState={gameState}
+                onDraw={handleDraw}
+                onDiscard={handleDiscard}
+                onSwap={handleSwap}
+                onReady={handleReady}
+                onResolvePower={handleResolvePower}
+                onFinishPeek={handleFinishPeek}
+                onPowerLookSwapDecision={handlePowerLookSwapDecision}
+                onSkipPower={handleSkipPower}
+                onStack={handleStack}
+                onTransfer={handleTransfer}
+                highlightedCardIds={highlightedCardIds}
+                isDebugMode={isDebugMode}
+            />
         </div>
     )
 }

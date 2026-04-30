@@ -70,7 +70,7 @@ export function useGameState(gameId: string) {
     }
   }
 
-  return { gameState, loading, error }
+  return { gameState, setGameState, loading, error }
 }
 
 function mapRowToGameState(row: GameRow): GameState {
@@ -88,7 +88,7 @@ function mapRowToGameState(row: GameRow): GameState {
 
   return {
     id: row.id,
-    status: row.status,
+    status: (row.status as any) || 'waiting',
     deck: (row.deck as any) || [],
     discardPile: (row.discard_pile as any) || [],
     players: players,
@@ -96,6 +96,7 @@ function mapRowToGameState(row: GameRow): GameState {
     turnPhase: (row.turn_phase as any) || 'draw',
     drawnCard: (row.drawn_card as any)?.card || (row.drawn_card as any) || null, // Handle legacy or new format
     drawnCardSource: (row.drawn_card as any)?.source || null,
+    pendingStackTransfer: (row.pending_stack_transfer as any) || null,
     lastActionAt: row.last_action_at || new Date().toISOString(),
     lastGameAction: (row as any).last_game_action || null,
     winnerId: null

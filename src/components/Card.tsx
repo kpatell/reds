@@ -12,16 +12,18 @@ interface CardProps {
     onClick?: () => void
     isSelected?: boolean
     className?: string
+    isDebug?: boolean
+    isOpponent?: boolean
 }
 
-export function Card({ card, onClick, isSelected, className }: CardProps) {
+export function Card({ card, onClick, isSelected, className, isDebug, isOpponent }: CardProps) {
     const isRed = card.suit === 'hearts' || card.suit === 'diamonds'
 
     return (
         <div
             onClick={onClick}
             className={cn(
-                "relative w-24 h-36 perspective-1000 cursor-pointer transition-transform duration-200 hover:-translate-y-1",
+                "relative h-[var(--card-h)] aspect-[2/3] perspective-1000 cursor-pointer transition-transform duration-200 hover:-translate-y-1",
                 isSelected && "ring-4 ring-[var(--color-primary)] rounded-xl scale-105 z-10",
                 className
             )}
@@ -56,6 +58,17 @@ export function Card({ card, onClick, isSelected, className }: CardProps) {
                     <div className="absolute inset-0 backface-hidden rotate-y-180 bg-[var(--color-primary)] rounded-xl flex items-center justify-center">
                         <div className="w-full h-full opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIi8+CjxwYXRoIGQ9Ik0wIDBMOCA4Wk04IDBMMCA4WiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEiLz4KPC9zdmc+')]"></div>
                         <Crown className="text-white/20 w-12 h-12 absolute" />
+                        
+                        {/* Debug Mode Overlay */}
+                        {isDebug && (
+                            <div 
+                                className="absolute inset-0 flex flex-col items-center justify-center text-white bg-black/60 font-bold text-3xl z-[100] rounded-xl pointer-events-none shadow-2xl"
+                                style={{ transform: `translateZ(1px) ${isOpponent ? 'rotateZ(180deg)' : ''}` }}
+                            >
+                                <div>{card.rank}</div>
+                                <SuitIcon suit={card.suit} className="w-8 h-8 mt-1" />
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
