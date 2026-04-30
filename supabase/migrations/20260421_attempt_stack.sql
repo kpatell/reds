@@ -129,16 +129,18 @@ BEGIN
   END IF;
 
   IF jsonb_array_length(v_deck) > 0 THEN
-     v_penalty_card := v_deck -> (jsonb_array_length(v_deck) - 1);
-     v_deck := v_deck - (jsonb_array_length(v_deck) - 1);
-     -- Reset faceup and knowledge
-     v_penalty_card := jsonb_set(v_penalty_card, '{isFaceUp}', 'false'::jsonb);
-     v_penalty_card := v_penalty_card - 'knownBy'; -- Remove knownBy key entirely
-     
-     -- Add to hand
-     v_hand := v_hand || v_penalty_card;
-     v_player := jsonb_set(v_player, '{hand}', v_hand);
-     v_players := jsonb_set(v_players, ARRAY[p_player_id::text], v_player);
+     IF jsonb_array_length(v_hand) < 12 THEN
+       v_penalty_card := v_deck -> (jsonb_array_length(v_deck) - 1);
+       v_deck := v_deck - (jsonb_array_length(v_deck) - 1);
+       -- Reset faceup and knowledge
+       v_penalty_card := jsonb_set(v_penalty_card, '{isFaceUp}', 'false'::jsonb);
+       v_penalty_card := v_penalty_card - 'knownBy'; -- Remove knownBy key entirely
+       
+       -- Add to hand
+       v_hand := v_hand || v_penalty_card;
+       v_player := jsonb_set(v_player, '{hand}', v_hand);
+       v_players := jsonb_set(v_players, ARRAY[p_player_id::text], v_player);
+     END IF;
   END IF;
 
   -- Add playerId to action

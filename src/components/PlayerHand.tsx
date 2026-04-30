@@ -9,38 +9,60 @@ interface PlayerHandProps {
     selectedCardId?: string | null
     className?: string
     overrideFaceUp?: number[] // Indices of cards to force face up
-    cardClassName?: string
     highlightedCardIds?: string[]
     isDebug?: boolean
-    maxCols?: number
+    viewingCardId?: string | null
+    beingViewedCardId?: string | null
+    beingViewedCardIds?: (string | null | undefined)[]
+    isInteractive?: boolean
+    revealViewedCard?: boolean
 }
 
-
-
-export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId, className, overrideFaceUp, cardClassName, viewingCardId, beingViewedCardId, beingViewedCardIds = [], isInteractive, revealViewedCard = true, highlightedCardIds = [], isDebug = false, maxCols }: PlayerHandProps & { viewingCardId?: string | null, beingViewedCardId?: string | null, beingViewedCardIds?: (string | null | undefined)[], isInteractive?: boolean, revealViewedCard?: boolean }) {
-
-    // DO NOT filter nulls so cards stay in their exact positions
-    const visualHand = [...player.hand]
+export function PlayerHand({
+    player,
+    isCurrentUser,
+    onCardClick,
+    selectedCardId,
+    className,
+    overrideFaceUp,
+    highlightedCardIds = [],
+    isDebug = false,
+    viewingCardId,
+    beingViewedCardId,
+    beingViewedCardIds = [],
+    isInteractive,
+    revealViewedCard = true,
+}: PlayerHandProps) {
+    // Preserve internal nulls so cards stay in their memorized positions
+    const visualHand: (CardType | null)[] = [...player.hand]
 
     // Pad to a minimum of 4 slots to maintain the 2x2 base grid
     while (visualHand.length < 4) {
-        visualHand.push(null as any)
+        visualHand.push(null)
     }
 
-    // 3. Grid Columns uses maxCols if provided (so both players' grids align), fallback to visual hand length
-    const cols = maxCols || Math.max(2, Math.ceil(visualHand.length / 2))
+    // Trim trailing nulls only (rightmost empty slots) — keep minimum 4
+    while (visualHand.length > 4 && visualHand[visualHand.length - 1] === null) {
+        visualHand.pop()
+    }
+
+    // Always keep an even count so the grid is a complete 2-row rectangle
+    if (visualHand.length % 2 !== 0) {
+        visualHand.push(null)
+    }
 
     return (
         <div className={cn("flex flex-col items-center gap-2", className)}>
             <div
-                className="grid justify-center max-w-full gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm"
-                style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, auto))` }}
+                className="grid grid-rows-2 grid-flow-col auto-cols-auto gap-1.5 sm:gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm"
             >
                 {visualHand.map((card, index) => {
                     if (!card) {
                         return (
-                            <div key={`empty-${index}`} className="relative group flex items-center justify-center border-2 border-dashed border-[var(--color-border)] rounded-xl aspect-[63/88] w-20 sm:w-24 md:w-28 opacity-50 bg-black/5">
-                            </div>
+                            <div
+                                key={`empty-${index}`}
+                                className="relative group flex items-center justify-center border-2 border-dashed border-[var(--color-border)] rounded-xl opacity-40 bg-black/5 h-[var(--card-h)] aspect-[2/3]"
+                            />
                         )
                     }
 
@@ -67,7 +89,6 @@ export function PlayerHand({ player, isCurrentUser, onCardClick, selectedCardId,
                                 isOpponent={!isCurrentUser}
                                 className={cn(
                                     (!isCurrentUser && !isInteractive) && "cursor-default hover:translate-y-0",
-                                    cardClassName,
                                     // Yellow ring = Active View (I am looking at this card right now)
                                     isViewing && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[var(--color-background)] scale-105 z-10",
                                     // Red ring = Opponent View (Opponent is looking at this card)

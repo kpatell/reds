@@ -23,7 +23,7 @@ export function Card({ card, onClick, isSelected, className, isDebug, isOpponent
         <div
             onClick={onClick}
             className={cn(
-                "relative w-24 h-36 perspective-1000 cursor-pointer transition-transform duration-200 hover:-translate-y-1",
+                "relative h-[var(--card-h)] aspect-[2/3] perspective-1000 cursor-pointer transition-transform duration-200 hover:-translate-y-1",
                 isSelected && "ring-4 ring-[var(--color-primary)] rounded-xl scale-105 z-10",
                 className
             )}

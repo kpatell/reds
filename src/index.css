@@ -22,3 +22,10 @@
     @apply bg-[var(--color-background)] text-[var(--color-text-main)] antialiased;
   }
 }
+
+/* Card sizing — viewport-relative with aspect-ratio 2/3 */
+/* Height-first: card height is a fraction of svh, width derived from aspect-ratio */
+.card-game {
+  --card-h: clamp(4.5rem, 12svh, 10rem);
+  --card-w: calc(var(--card-h) * 2 / 3);
+}
