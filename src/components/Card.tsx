@@ -14,16 +14,19 @@ interface CardProps {
     className?: string
     isDebug?: boolean
     isOpponent?: boolean
+    size?: 'sm' | 'default'
 }
 
-export function Card({ card, onClick, isSelected, className, isDebug, isOpponent }: CardProps) {
+export function Card({ card, onClick, isSelected, className, isDebug, isOpponent, size = 'default' }: CardProps) {
     const isRed = card.suit === 'hearts' || card.suit === 'diamonds'
+    const sm = size === 'sm'
 
     return (
         <div
             onClick={onClick}
             className={cn(
-                "relative h-[var(--card-h)] aspect-[2/3] perspective-1000 cursor-pointer transition-transform duration-200 hover:-translate-y-1",
+                "relative perspective-1000 cursor-pointer transition-transform duration-200 hover:-translate-y-1",
+                sm ? "w-16 h-24" : "h-[var(--card-h)] aspect-[2/3]",
                 isSelected && "ring-4 ring-[var(--color-primary)] rounded-xl scale-105 z-10",
                 className
             )}
@@ -36,19 +39,19 @@ export function Card({ card, onClick, isSelected, className, isDebug, isOpponent
             >
                 {/* Front Face */}
                 {card.isFaceUp && (
-                    <div className="absolute inset-0 backface-hidden bg-[var(--color-surface)] rounded-xl flex flex-col items-center justify-between p-2">
-                        <div className={cn("self-start text-lg font-bold font-serif", isRed ? "text-red-600" : "text-neutral-900")}>
+                    <div className={cn("absolute inset-0 backface-hidden bg-[var(--color-surface)] rounded-xl flex flex-col items-center justify-between", sm ? "p-1" : "p-2")}>
+                        <div className={cn("self-start font-bold font-serif", sm ? "text-xs" : "text-lg", isRed ? "text-red-600" : "text-neutral-900")}>
                             {card.rank}
-                            <SuitIcon suit={card.suit} className="w-4 h-4" />
+                            <SuitIcon suit={card.suit} className={sm ? "w-2.5 h-2.5" : "w-4 h-4"} />
                         </div>
 
-                        <div className={cn("text-4xl", isRed ? "text-red-600" : "text-neutral-900")}>
+                        <div className={cn(sm ? "text-2xl" : "text-4xl", isRed ? "text-red-600" : "text-neutral-900")}>
                             <SuitIcon suit={card.suit} />
                         </div>
 
-                        <div className={cn("self-end text-lg font-bold font-serif rotate-180", isRed ? "text-red-600" : "text-neutral-900")}>
+                        <div className={cn("self-end font-bold font-serif rotate-180", sm ? "text-xs" : "text-lg", isRed ? "text-red-600" : "text-neutral-900")}>
                             {card.rank}
-                            <SuitIcon suit={card.suit} className="w-4 h-4" />
+                            <SuitIcon suit={card.suit} className={sm ? "w-2.5 h-2.5" : "w-4 h-4"} />
                         </div>
                     </div>
                 )}

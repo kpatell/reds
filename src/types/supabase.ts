@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       games: {
         Row: {
+          caller_id: string | null
           created_at: string
           current_turn_player_id: string | null
           deck: Json | null
@@ -28,8 +29,10 @@ export type Database = {
           players: Json | null
           status: string | null
           turn_phase: string | null
+          winner_id: string | null
         }
         Insert: {
+          caller_id?: string | null
           created_at?: string
           current_turn_player_id?: string | null
           deck?: Json | null
@@ -42,8 +45,10 @@ export type Database = {
           players?: Json | null
           status?: string | null
           turn_phase?: string | null
+          winner_id?: string | null
         }
         Update: {
+          caller_id?: string | null
           created_at?: string
           current_turn_player_id?: string | null
           deck?: Json | null
@@ -56,6 +61,7 @@ export type Database = {
           players?: Json | null
           status?: string | null
           turn_phase?: string | null
+          winner_id?: string | null
         }
         Relationships: []
       }
@@ -100,6 +106,10 @@ export type Database = {
           p_player_id: string
           p_target_discard_card_id: string
         }
+        Returns: Json
+      }
+      call_reds: {
+        Args: { p_game_id: string; p_player_id: string }
         Returns: Json
       }
       resolve_stack_transfer: {

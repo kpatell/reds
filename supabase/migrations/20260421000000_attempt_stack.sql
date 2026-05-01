@@ -79,8 +79,8 @@ BEGIN
        v_new_action := '{"actionType": "stack_failed", "description": "Stack failed: Wrong card!", "metadata": {}}'::jsonb;
     ELSE
        -- Success!
-       -- Remove card from hand
-       v_hand := v_hand - v_hand_card_index;
+       -- Null out the slot so other cards stay in their memorized positions
+       v_hand := jsonb_set(v_hand, ARRAY[v_hand_card_index::text], 'null'::jsonb);
        -- Mark face up
        v_hand_card := jsonb_set(v_hand_card, '{isFaceUp}', 'true'::jsonb);
        -- Add to discard pile

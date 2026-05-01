@@ -36,7 +36,7 @@ export type TurnPhase =
 
 export interface GameState {
   id: string
-  status: 'waiting' | 'playing' | 'finished'
+  status: 'waiting' | 'playing' | 'final_turn' | 'finished'
   deck: Deck
   discardPile: Deck
   players: Record<string, PlayerState>
@@ -52,7 +52,7 @@ export interface GameState {
   lastActionAt: string
   lastGameAction?: {
       playerId: string;
-      actionType: 'draw' | 'discard' | 'swap' | 'power_peek_self' | 'power_peek_opponent' | 'power_blind_swap' | 'power_look_swap' | 'power_skip' | 'stack_success' | 'stack_failed' | 'stack_transfer';
+      actionType: 'draw' | 'discard' | 'swap' | 'power_peek_self' | 'power_peek_opponent' | 'power_blind_swap' | 'power_look_swap' | 'power_skip' | 'stack_success' | 'stack_failed' | 'stack_transfer' | 'call_reds';
       description: string;
       metadata?: {
           swapSourceCardId?: string | null
@@ -60,5 +60,7 @@ export interface GameState {
           highlightedCardIds?: string[]
       }
   } | null
+  callerId?: string | null
   winnerId: string | null
+  rematchVotes?: string[]
 }

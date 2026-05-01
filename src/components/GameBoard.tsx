@@ -17,11 +17,12 @@ interface GameBoardProps {
     onSkipPower?: () => void
     onStack?: (handCardId: string, targetDiscardCardId: string) => void
     onTransfer?: (handCardId: string) => void
+    onCallReds?: () => void
     highlightedCardIds?: string[]
     isDebugMode?: boolean
 }
 
-export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower, onStack, onTransfer, highlightedCardIds, isDebugMode = false }: GameBoardProps) {
+export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower, onStack, onTransfer, onCallReds, highlightedCardIds, isDebugMode = false }: GameBoardProps) {
     const { user } = useAuth()
 
     if (!user) {
@@ -80,21 +81,111 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     // Can draw from deck/discard?
     const canDraw = isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase
 
+    const isFinalTurn = gameState.status === 'final_turn'
+    const canCallReds = isMyTurn && gameState.turnPhase === 'draw' && gameState.status === 'playing'
+
+    // Centralized action prompt
+    let actionPromptText: string | null = null
+    let actionPromptColor = ''
+    let hasSkipButton = false
+    let viewingConfirmButton = false
+    let lookSwapDecisionButtons = false
+
+    if (currentPlayer) {
+        if (isPeekPhase && !currentPlayer.isReady) {
+            actionPromptText = 'Peek at your bottom 2 cards!'
+            actionPromptColor = 'bg-[var(--color-surface)]/90 backdrop-blur-md border-[var(--color-border)] text-[var(--color-primary)]'
+        } else if (isPowerPeekSelfPhase && isMyTurn) {
+            actionPromptText = 'Choose one of your cards to peek at!'
+            actionPromptColor = 'bg-purple-950/70 backdrop-blur-md border-purple-400/40 text-purple-100'
+        } else if (isPowerPeekOpponentPhase && isMyTurn) {
+            actionPromptText = "Choose an opponent's card to peek at!"
+            actionPromptColor = 'bg-blue-950/70 backdrop-blur-md border-blue-400/40 text-blue-100'
+        } else if (isPowerBlindSwapPhase && isMyTurn) {
+            actionPromptText = currentPlayer.swapSourceCardId
+                ? "Now choose an opponent's card to swap!"
+                : 'Choose one of your cards to swap!'
+            actionPromptColor = 'bg-orange-950/70 backdrop-blur-md border-orange-400/40 text-orange-100'
+            hasSkipButton = !currentPlayer.swapSourceCardId
+        } else if (isPowerLookSwapPhase && isMyTurn) {
+            actionPromptText = currentPlayer.swapSourceCardId
+                ? "Now choose an opponent's card to look at!"
+                : 'Choose one of your cards to look at!'
+            actionPromptColor = 'bg-indigo-950/70 backdrop-blur-md border-indigo-400/40 text-indigo-100'
+        } else if (isPowerPeekViewingPhase && isMyTurn) {
+            actionPromptText = 'Memorize this card!'
+            actionPromptColor = 'bg-amber-950/70 backdrop-blur-md border-amber-400/40 text-amber-100'
+            viewingConfirmButton = true
+        } else if (isPowerLookSwapDecisionPhase && isMyTurn) {
+            actionPromptText = 'Swap these cards?'
+            actionPromptColor = 'bg-indigo-950/70 backdrop-blur-md border-indigo-400/40 text-indigo-100'
+            lookSwapDecisionButtons = true
+        } else if (amITransferring) {
+            actionPromptText = 'Choose a card to give to the opponent!'
+            actionPromptColor = 'bg-red-950/70 backdrop-blur-md border-red-400/40 text-red-100'
+        } else if (opponentIsTransferring) {
+            actionPromptText = 'Opponent is choosing a card to give you...'
+            actionPromptColor = 'bg-stone-900/70 backdrop-blur-md border-stone-400/40 text-stone-200'
+        }
+    }
+
     return (
         <div className="card-game h-full flex flex-col p-2 sm:p-4 relative">
+            {/* Call REDS — ghost button, bottom-right of board */}
+            {canCallReds && (
+                <button
+                    onClick={() => onCallReds?.()}
+                    className="absolute bottom-4 right-4 z-30 bg-red-500/10 text-red-700 border border-red-500/30 backdrop-blur-md hover:bg-red-500/20 shadow-sm px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-colors"
+                >
+                    Call REDS
+                </button>
+            )}
+
+            {/* Centralized Action Prompt — absolutely centered on the board */}
+            {actionPromptText && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 pointer-events-none">
+                    <div className={cn('px-5 py-2 rounded-full border shadow-lg text-sm font-bold whitespace-nowrap', actionPromptColor)}>
+                        {actionPromptText}
+                    </div>
+                    {hasSkipButton && onSkipPower && (
+                        <button
+                            onClick={() => onSkipPower()}
+                            className="pointer-events-auto bg-slate-700/80 text-white hover:bg-slate-600 backdrop-blur-sm border border-slate-500 px-3 py-1 rounded-full text-xs font-bold transition-colors shadow-sm"
+                        >
+                            Skip Power
+                        </button>
+                    )}
+                    {viewingConfirmButton && (
+                        <button
+                            onClick={() => onFinishPeek?.()}
+                            className="pointer-events-auto bg-emerald-500 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:scale-105 focus-visible:ring-2 focus-visible:ring-emerald-400 transition-transform"
+                        >
+                            Done
+                        </button>
+                    )}
+                    {lookSwapDecisionButtons && (
+                        <div className="pointer-events-auto flex gap-4">
+                            <button
+                                onClick={() => onPowerLookSwapDecision?.('keep')}
+                                className="bg-gray-500 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:scale-105 focus-visible:ring-2 focus-visible:ring-gray-400 transition-transform"
+                            >
+                                Keep Mine
+                            </button>
+                            <button
+                                onClick={() => onPowerLookSwapDecision?.('swap')}
+                                className="bg-emerald-500 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:scale-105 focus-visible:ring-2 focus-visible:ring-emerald-400 transition-transform"
+                            >
+                                Swap
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* ═══════════════════════════════════════════ */}
             {/* TOP ZONE — Opponent Hand                   */}
             {/* ═══════════════════════════════════════════ */}
             <div className="flex-none flex items-center justify-center pt-10 pb-2 rotate-180 relative">
-                {(isPowerPeekOpponentPhase || (isPowerBlindSwapPhase && currentPlayer.swapSourceCardId) || (isPowerLookSwapPhase && currentPlayer.swapSourceCardId)) && isMyTurn && (
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce rotate-180">
-                        <div className="bg-blue-100 border border-blue-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-blue-700">
-                            {isPowerBlindSwapPhase ? "Choose card to swap!" : isPowerLookSwapPhase ? "Choose card to look at!" : "Peek opponent's card!"}
-                        </div>
-                        <div className="w-2 h-2 bg-blue-100 border-b border-r border-blue-300 absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
-                    </div>
-                )}
-
                 {opponent ? (
                     <PlayerHand
                         player={opponent}
@@ -217,114 +308,6 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             <div className="flex-none flex flex-col items-center justify-center pb-2 relative">
                 {currentPlayer && (
                     <div className="flex flex-col items-center gap-3 relative">
-                        {/* Peek Message - Positioned relative to hand */}
-                        {isPeekPhase && !currentPlayer.isReady && (
-                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce">
-                                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-[var(--color-primary)]">
-                                    Peek bottom 2!
-                                </div>
-                                <div className="w-2 h-2 bg-[var(--color-surface)] border-b border-r border-[var(--color-border)] absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
-                            </div>
-                        )}
-
-                        {/* Power Peek Message */}
-                        {isPowerPeekSelfPhase && isMyTurn && (
-                            <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce">
-                                <div className="bg-purple-100 border border-purple-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-purple-700">
-                                    Choose a card to peek!
-                                </div>
-                                <div className="w-2 h-2 bg-purple-100 border-b border-r border-purple-300 absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
-                            </div>
-                        )}
-
-                        {/* Power Blind Swap Message */}
-                        {isPowerBlindSwapPhase && isMyTurn && (
-                            <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 w-max animate-in fade-in slide-in-from-bottom-2">
-                                <div className="bg-orange-100 border border-orange-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-orange-700 animate-bounce">
-                                    {currentPlayer.swapSourceCardId
-                                        ? "Now choose an opponent's card to swap!"
-                                        : "Choose one of your cards to swap!"}
-                                </div>
-
-                                {/* Skip Button */}
-                                {!currentPlayer.swapSourceCardId && onSkipPower && (
-                                    <button
-                                        onClick={() => onSkipPower?.()}
-                                        className="bg-gray-100 hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-gray-400 text-gray-600 px-3 py-1 rounded-full text-xs font-bold transition-colors shadow-sm border border-gray-200"
-                                    >
-                                        Skip Power
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Power Look & Swap Message */}
-                        {isPowerLookSwapPhase && isMyTurn && (
-                            <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-30 w-max animate-bounce">
-                                <div className="bg-indigo-100 border border-indigo-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-indigo-700">
-                                    {currentPlayer.swapSourceCardId
-                                        ? "Now choose an opponent's card to look at!"
-                                        : "Choose one of your cards to look at!"}
-                                </div>
-                                <div className="w-2 h-2 bg-indigo-100 border-b border-r border-indigo-300 absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
-                            </div>
-                        )}
-
-                        {/* Viewing Confirmation */}
-                        {isPowerPeekViewingPhase && isMyTurn && (
-                            <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2">
-                                <div className="bg-yellow-100 border border-yellow-300 px-4 py-2 rounded-xl shadow-lg text-sm font-bold text-yellow-800 text-center">
-                                    Memorize this card!
-                                </div>
-                                <button
-                                    onClick={() => onFinishPeek?.()}
-                                    className="bg-emerald-500 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:scale-105 focus-visible:ring-2 focus-visible:ring-emerald-400 transition-transform"
-                                >
-                                    Done
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Look & Swap Decision */}
-                        {isPowerLookSwapDecisionPhase && isMyTurn && (
-                            <div className="absolute -top-20 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 w-max">
-                                <div className="bg-indigo-100 border border-indigo-300 px-4 py-2 rounded-xl shadow-lg text-sm font-bold text-indigo-800 text-center mb-2">
-                                    Swap these cards?
-                                </div>
-                                <div className="flex gap-4">
-                                    <button
-                                        onClick={() => onPowerLookSwapDecision?.('keep')}
-                                        className="bg-gray-500 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:scale-105 focus-visible:ring-2 focus-visible:ring-gray-400 transition-transform"
-                                    >
-                                        Keep Mine
-                                    </button>
-                                    <button
-                                        onClick={() => onPowerLookSwapDecision?.('swap')}
-                                        className="bg-emerald-500 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:scale-105 focus-visible:ring-2 focus-visible:ring-emerald-400 transition-transform"
-                                    >
-                                        Swap
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Pending Transfer Alert */}
-                        {amITransferring && (
-                            <div className="absolute -top-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 w-max animate-bounce">
-                                <div className="bg-red-500 border border-red-700 px-6 py-2 rounded-xl shadow-lg text-sm font-bold text-white text-center">
-                                    Select one of your cards to give to the opponent!
-                                </div>
-                                <div className="w-2 h-2 bg-red-500 border-b border-r border-red-700 absolute left-1/2 -bottom-1 -translate-x-1/2 rotate-45"></div>
-                            </div>
-                        )}
-                        {opponentIsTransferring && (
-                            <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-40 w-max">
-                                <div className="bg-gray-100 border border-gray-300 px-4 py-1.5 rounded-full shadow-lg text-xs font-bold text-gray-700">
-                                    Opponent is transferring a card...
-                                </div>
-                            </div>
-                        )}
-
                         <PlayerHand
                             player={currentPlayer}
                             isCurrentUser={true}

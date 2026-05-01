@@ -1,10 +1,11 @@
 import type { GameState, PlayerState, Card } from './types'
 import { createDeck, shuffleDeck, dealCards } from './deck'
+import { determineWinner } from './scoring'
 
 /**
  * Initializes a new game state.
  */
-export function initializeGame(gameId: string, players: { id: string; username: string }[]): GameState {
+export function initializeGame(gameId: string, players: { id: string; username: string }[], startingPlayerId?: string): GameState {
   const deck = shuffleDeck(createDeck())
   const playerIds = players.map(p => p.id)
   const { hands, remainingDeck } = dealCards(deck, playerIds)
@@ -30,7 +31,7 @@ export function initializeGame(gameId: string, players: { id: string; username: 
     deck: remainingDeck,
     discardPile,
     players: playerStates,
-    currentTurnPlayerId: playerIds[0], // Player 1 starts
+    currentTurnPlayerId: startingPlayerId ?? playerIds[0],
     turnPhase: 'peek', // Start in Peek phase (User Request #5)
     drawnCard: null,
     lastActionAt: new Date().toISOString(),
@@ -63,7 +64,7 @@ export function setPlayerReady(state: GameState, playerId: string): GameState {
  * Checks if a move is valid based on the current state.
  */
 export function isValidMove(state: GameState, playerId: string): boolean {
-  if (state.status !== 'playing') return false
+  if (state.status !== 'playing' && state.status !== 'final_turn') return false
   if (state.currentTurnPlayerId !== playerId) return false
   return true
 }
@@ -560,15 +561,28 @@ export function skipPower(state: GameState, playerId: string): GameState {
 
 /**
  * Ends the current turn and passes to the next player.
+ * When status is 'final_turn', this is the opponent's last move — transition to 'finished'.
  */
 function endTurn(state: GameState): GameState {
+  if (state.status === 'final_turn') {
+    const callerId = state.callerId!
+    const { winnerId } = determineWinner(state.players, callerId)
+
+    state.status = 'finished'
+    state.winnerId = winnerId
+    state.currentTurnPlayerId = null
+    state.turnPhase = 'draw'
+    state.lastActionAt = new Date().toISOString()
+    return state
+  }
+
   const playerIds = Object.keys(state.players).sort()
   const currentIndex = playerIds.indexOf(state.currentTurnPlayerId!)
   const nextIndex = (currentIndex + 1) % playerIds.length
-  
+
   state.currentTurnPlayerId = playerIds[nextIndex]
   state.turnPhase = 'draw'
   state.lastActionAt = new Date().toISOString()
-  
+
   return state
 }
