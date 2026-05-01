@@ -94,3 +94,14 @@
     - Host creates game -> Generates 4-character code (e.g., `ABCD`).
     - Opponent enters code -> Joins lobby.
 - **Requirement:** Do not implement complex matchmaking queues. Keep it manual and simple.
+
+## 11. LLM Token & Context Management
+- **Model Selection:**
+    - **Claude 3.5 Haiku:** Default for simple tasks, targeted refactors, writing unit tests, and answering isolated questions.
+    - **Claude 3.5 Sonnet:** For complex architectural changes, debugging subtle race conditions, or major feature implementations.
+- **Context Window Discipline:**
+    - Only provide the exact files relevant to the prompt. Do NOT attach the entire codebase.
+    - Structure prompts to take advantage of Prompt Caching (if supported by your CLI tool) by keeping static context (like `AG_VALIDATION_RULES.md`) at the top.
+- **Prompt Structure:**
+    - Be precise. State the exact problem, the file to change, and the expected outcome.
+    - Request unified diffs or targeted code blocks rather than full file rewrites to save output tokens.

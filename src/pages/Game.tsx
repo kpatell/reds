@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/components/AuthProvider'
 import { useGameState } from '@/hooks/useGameState'
 import { GameBoard } from '@/components/GameBoard'
+import { ShowdownOverlay } from '@/components/ShowdownOverlay'
 
 import { supabase } from '@/lib/supabase'
 import {
@@ -26,6 +27,7 @@ export default function Game() {
     // Effect for notifications based on lastAction
     useEffect(() => {
         if (!gameState?.lastGameAction) return
+        if (gameState.status !== 'playing' && gameState.status !== 'final_turn') return
 
         const action = gameState.lastGameAction
         const actionTime = new Date(gameState.lastActionAt).getTime()
@@ -84,7 +86,27 @@ export default function Game() {
                 }
             }
         }
+
+        if (action.actionType === 'call_reds') {
+            const callerIsMe = action.playerId === user?.id
+            if (callerIsMe) {
+                toast.success('You called REDS!')
+            } else {
+                toast.warning('Opponent called REDS — this is your final turn!')
+            }
+        }
     }, [gameState?.lastActionAt, gameState?.lastGameAction])
+
+    // Notify when opponent votes for rematch but current player hasn't yet
+    useEffect(() => {
+        if (!gameState || !user || gameState.status !== 'finished') return
+        const opponentId = Object.keys(gameState.players).find(id => id !== user.id)
+        if (!opponentId) return
+        const votes = gameState.rematchVotes ?? []
+        if (votes.includes(opponentId) && !votes.includes(user.id)) {
+            toast.info('Opponent wants to play again!')
+        }
+    }, [(gameState?.rematchVotes ?? []).length])
 
     // Auto-sign in for guests accessing via link
     useEffect(() => {
@@ -196,13 +218,12 @@ export default function Game() {
             players: newGameState.players as unknown as Json,
             current_turn_player_id: newGameState.currentTurnPlayerId,
             turn_phase: newGameState.turnPhase,
-            // Pack source into the JSON
             drawn_card: newGameState.drawnCard
                 ? { ...newGameState.drawnCard, source: newGameState.drawnCardSource } as unknown as Json
                 : null,
             last_action_at: new Date().toISOString(),
-            // Ensure lastGameAction is synced to DB so opponent gets notifications
-            last_game_action: newGameState.lastGameAction as unknown as Json
+            last_game_action: newGameState.lastGameAction as unknown as Json,
+            winner_id: newGameState.winnerId ?? null,
         }
 
         console.log('[Game Update] Sending payload:', updatePayload)
@@ -317,6 +338,69 @@ export default function Game() {
         }
     }
 
+    const handleCallReds = async () => {
+        if (!gameState || !user || !gameId) return
+        try {
+            const { data, error } = await supabase.rpc('call_reds', {
+                p_game_id: gameId,
+                p_player_id: user.id
+            })
+            if (error) throw error
+            const result = data as { success?: boolean; error?: string }
+            if (result && !result.success) {
+                toast.error(result.error || 'Failed to call REDS')
+            }
+        } catch (error: unknown) {
+            console.error('Call REDS error:', error)
+            toast.error(error instanceof Error ? error.message : 'Failed to call REDS')
+        }
+    }
+
+    const handlePlayAgain = async () => {
+        if (!gameState || !user || !gameId || gameState.status !== 'finished') return
+        const winnerId = gameState.winnerId
+        const playersList = Object.values(gameState.players).map(p => ({ id: p.id, username: p.username }))
+        const newState = initializeGame(gameId, playersList, winnerId ?? undefined)
+
+        const { error } = await (supabase.from('games') as any)
+            .update({
+                status: 'playing',
+                deck: newState.deck as unknown as Json,
+                discard_pile: newState.discardPile as unknown as Json,
+                players: newState.players as unknown as Json,
+                current_turn_player_id: newState.currentTurnPlayerId,
+                turn_phase: newState.turnPhase,
+                drawn_card: null,
+                last_action_at: new Date().toISOString(),
+                last_game_action: null,
+                winner_id: null,
+                caller_id: null,
+                pending_stack_transfer: null,
+                rematch_votes: [],
+            })
+            .eq('id', gameId)
+            .eq('status', 'finished') // Guard against duplicate clicks
+
+        if (error) toast.error('Failed to start new round')
+    }
+
+    const handleVoteRematch = async () => {
+        if (!gameState || !user || !gameId) return
+        try {
+            const { data, error } = await supabase.rpc('vote_rematch', {
+                p_game_id: gameId,
+                p_player_id: user.id
+            })
+            if (error) throw error
+            const result = data as { success: boolean; both_agreed: boolean }
+            if (result?.both_agreed) {
+                await handlePlayAgain()
+            }
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to request rematch')
+        }
+    }
+
     const handleStack = async (handCardId: string, targetDiscardCardId: string) => {
         if (!gameState || !user || !gameId) return
 
@@ -373,6 +457,17 @@ export default function Game() {
 
     const isMyTurn = gameState.currentTurnPlayerId === user?.id
     const isPeekPhase = gameState.turnPhase === 'peek'
+    const isFinalTurn = gameState.status === 'final_turn'
+
+    const turnBannerLabel = isFinalTurn
+        ? 'FINAL TURN'
+        : isMyTurn ? 'YOUR TURN' : "OPPONENT'S TURN"
+
+    const turnBannerClass = isFinalTurn
+        ? 'px-4 py-2 rounded-full font-bold text-sm shadow-md bg-amber-500 text-white animate-pulse'
+        : isMyTurn
+            ? 'px-4 py-2 rounded-full font-bold text-sm transition-all duration-300 shadow-md bg-[var(--color-primary)] text-white'
+            : 'px-4 py-2 rounded-full font-bold text-sm transition-all duration-300 shadow-md bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)] opacity-80'
 
     return (
         <div className="h-dvh bg-[var(--color-background)] overflow-hidden relative">
@@ -391,11 +486,8 @@ export default function Game() {
                 </div>
 
                 {!isPeekPhase && (
-                    <div className={isMyTurn
-                        ? "px-4 py-2 rounded-full font-bold text-sm transition-all duration-300 shadow-md bg-[var(--color-primary)] text-white"
-                        : "px-4 py-2 rounded-full font-bold text-sm transition-all duration-300 shadow-md bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)] opacity-80"
-                    }>
-                        {isMyTurn ? "YOUR TURN" : "OPPONENT'S TURN"}
+                    <div className={turnBannerClass}>
+                        {turnBannerLabel}
                     </div>
                 )}
             </div>
@@ -412,9 +504,18 @@ export default function Game() {
                 onSkipPower={handleSkipPower}
                 onStack={handleStack}
                 onTransfer={handleTransfer}
+                onCallReds={handleCallReds}
                 highlightedCardIds={highlightedCardIds}
                 isDebugMode={isDebugMode}
             />
+
+            {user && (
+                <ShowdownOverlay
+                    gameState={gameState}
+                    currentUserId={user.id}
+                    onVoteRematch={handleVoteRematch}
+                />
+            )}
         </div>
     )
 }
