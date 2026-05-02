@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/Card'
 import { calculateHandScore } from '@/lib/game/scoring'
@@ -7,6 +8,7 @@ interface ShowdownOverlayProps {
   gameState: GameState
   currentUserId: string
   onVoteRematch: () => void
+  onLeave: () => void
 }
 
 // Same split logic as PlayerHand.tsx — top row: 0,1,4,6,… / bottom row: 2,3,5,7,…
@@ -41,7 +43,7 @@ function HandGrid({ hand }: { hand: (CardType | null)[] }) {
         />
       )
     }
-    return <Card key={card.id} card={{ ...card, isFaceUp: true }} size="sm" className="shrink-0" />
+    return <Card key={card.id} card={{ ...card, isFaceUp: true }} size="sm" className="shrink-0 cursor-default" />
   }
 
   return (
@@ -58,23 +60,61 @@ function HandGrid({ hand }: { hand: (CardType | null)[] }) {
   )
 }
 
-export function ShowdownOverlay({ gameState, currentUserId, onVoteRematch }: ShowdownOverlayProps) {
+interface FrozenState {
+  players: Record<string, PlayerState>
+  winnerId: string | null
+  callerId: string | null
+}
+
+export function ShowdownOverlay({ gameState, currentUserId, onVoteRematch, onLeave }: ShowdownOverlayProps) {
+  // Frozen snapshot of the game state the moment it first enters 'finished'.
+  // Once set, it's never downgraded — protects against the opponent leaving and
+  // triggering a realtime update that removes them from gameState.players.
+  const [frozen, setFrozen] = useState<FrozenState | null>(null)
+
+  useEffect(() => {
+    if (gameState.status === 'finished') {
+      setFrozen(prev => {
+        if (!prev) {
+          // Initial capture
+          return { players: gameState.players, winnerId: gameState.winnerId, callerId: gameState.callerId ?? null }
+        }
+        // Upgrade if this update has more players (e.g. snapshot arrived before opponent left)
+        return Object.keys(gameState.players).length > Object.keys(prev.players).length
+          ? { players: gameState.players, winnerId: gameState.winnerId, callerId: gameState.callerId ?? null }
+          : prev
+      })
+    } else {
+      // New round started — clear snapshot
+      setFrozen(null)
+    }
+  }, [gameState.status, gameState.players, gameState.winnerId, gameState.callerId])
+
   if (gameState.status !== 'finished') return null
 
-  const me = gameState.players[currentUserId]
-  const opponentId = Object.keys(gameState.players).find(id => id !== currentUserId)
-  const opponent = opponentId ? gameState.players[opponentId] : null
+  // Use frozen players for display; fall back to live state if snapshot not yet set
+  const displayPlayers = frozen?.players ?? gameState.players
+  const displayWinnerId = frozen?.winnerId ?? gameState.winnerId
+  const displayCallerId = frozen?.callerId ?? gameState.callerId
 
-  if (!me || !opponent) return null
+  const me = displayPlayers[currentUserId]
+  const frozenOpponentId = Object.keys(displayPlayers).find(id => id !== currentUserId)
+  const displayOpponent = frozenOpponentId ? displayPlayers[frozenOpponentId] : null
+
+  if (!me) return null
+
+  // Live game state drives interactive elements only
+  const liveOpponentId = Object.keys(gameState.players).find(id => id !== currentUserId)
+  const opponentLeft = !liveOpponentId
 
   const myScore = calculateHandScore(me.hand)
-  const opponentScore = calculateHandScore(opponent.hand)
-  const iWin = gameState.winnerId === currentUserId
-  const callerIsMe = gameState.callerId === currentUserId
+  const opponentScore = displayOpponent ? calculateHandScore(displayOpponent.hand) : 0
+  const iWin = displayWinnerId === currentUserId
+  const callerIsMe = displayCallerId === currentUserId
 
   const rematchVotes = gameState.rematchVotes ?? []
   const myVote = rematchVotes.includes(currentUserId)
-  const opponentVoted = opponentId ? rematchVotes.includes(opponentId) : false
+  const opponentVoted = liveOpponentId ? rematchVotes.includes(liveOpponentId) : false
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
@@ -90,11 +130,17 @@ export function ShowdownOverlay({ gameState, currentUserId, onVoteRematch }: Sho
 
         {/* REDS caller attribution */}
         <p className="text-center text-xs font-medium text-stone-500 -mt-1">
-          {callerIsMe ? 'You' : opponent.username} called REDS
+          {callerIsMe ? 'You' : (displayOpponent?.username ?? 'Opponent')} called REDS
         </p>
 
         {/* Opponent hand */}
-        <HandSection player={opponent} score={opponentScore} isWinner={!iWin} label={opponent.username} />
+        {displayOpponent ? (
+          <HandSection player={displayOpponent} score={opponentScore} isWinner={!iWin} label={displayOpponent.username} />
+        ) : (
+          <div className="text-center text-sm text-stone-400 py-6 border-2 border-dashed border-stone-300 rounded-xl">
+            Opponent left the game
+          </div>
+        )}
 
         <div className="border-t border-stone-300" />
 
@@ -103,23 +149,37 @@ export function ShowdownOverlay({ gameState, currentUserId, onVoteRematch }: Sho
 
         {/* Consensus play-again */}
         <div className="flex flex-col gap-2">
-          {opponentVoted && !myVote && (
-            <p className="text-center text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg py-1.5 px-3">
-              Opponent wants to play again!
+          {opponentLeft ? (
+            <p className="text-center text-sm font-bold text-slate-900 bg-stone-200 border border-stone-300 rounded-xl py-3 px-4">
+              Opponent has left the game
             </p>
-          )}
-          {myVote ? (
-            <div className="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wide text-center text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed select-none">
-              Waiting for opponent...
-            </div>
           ) : (
-            <button
-              onClick={onVoteRematch}
-              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold text-sm uppercase tracking-wide focus-visible:ring-2 focus-visible:ring-red-400 transition-colors shadow-md"
-            >
-              Play Again
-            </button>
+            <>
+              {opponentVoted && !myVote && (
+                <p className="text-center text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg py-1.5 px-3">
+                  Opponent wants to play again!
+                </p>
+              )}
+              {myVote ? (
+                <div className="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wide text-center text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed select-none">
+                  Waiting for opponent...
+                </div>
+              ) : (
+                <button
+                  onClick={onVoteRematch}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold text-sm uppercase tracking-wide focus-visible:ring-2 focus-visible:ring-red-400 transition-colors shadow-md cursor-pointer"
+                >
+                  Play Again
+                </button>
+              )}
+            </>
           )}
+          <button
+            onClick={onLeave}
+            className="w-full py-2.5 rounded-xl text-sm font-medium text-stone-600 hover:text-stone-900 bg-transparent hover:bg-stone-200 border border-stone-300 transition-colors cursor-pointer"
+          >
+            Return to Lobby
+          </button>
         </div>
       </div>
     </div>

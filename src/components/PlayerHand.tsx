@@ -16,6 +16,7 @@ interface PlayerHandProps {
     beingViewedCardIds?: (string | null | undefined)[]
     isInteractive?: boolean
     revealViewedCard?: boolean
+    showReadyBadge?: boolean
 }
 
 /**
@@ -49,6 +50,7 @@ export function PlayerHand({
     beingViewedCardIds = [],
     isInteractive,
     revealViewedCard = true,
+    showReadyBadge = true,
 }: PlayerHandProps) {
     // Preserve internal nulls so cards stay in their memorized positions
     const visualHand: (CardType | null)[] = [...player.hand]
@@ -130,11 +132,19 @@ export function PlayerHand({
             </div>
 
             <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold">
-                    {player.username.charAt(0).toUpperCase()}
-                </div>
+                {player.avatar_url ? (
+                    <img
+                        src={player.avatar_url}
+                        alt={player.username}
+                        className="w-8 h-8 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]"
+                    />
+                ) : (
+                    <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold">
+                        {player.username.charAt(0).toUpperCase()}
+                    </div>
+                )}
                 <span className="font-medium text-[var(--color-text-main)]">{player.username}</span>
-                {player.isReady && (
+                {showReadyBadge && player.isReady && (
                     <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Ready</span>
                 )}
             </div>

@@ -15,6 +15,7 @@ export type Deck = Card[]
 export interface PlayerState {
   id: string
   username: string
+  avatar_url?: string | null
   hand: (Card | null)[] // Supports null for empty slots
   isReady: boolean
   hasCalledReds: boolean
@@ -36,7 +37,7 @@ export type TurnPhase =
 
 export interface GameState {
   id: string
-  status: 'waiting' | 'playing' | 'final_turn' | 'finished'
+  status: 'waiting' | 'playing' | 'final_turn' | 'reveal_pending' | 'finished'
   deck: Deck
   discardPile: Deck
   players: Record<string, PlayerState>
@@ -63,4 +64,5 @@ export interface GameState {
   callerId?: string | null
   winnerId: string | null
   rematchVotes?: string[]
+  revealVotes?: string[]
 }

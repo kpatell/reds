@@ -5,77 +5,6 @@ import type { Database } from '@/types/supabase'
 
 type GameRow = Database['public']['Tables']['games']['Row']
 
-export function useGameState(gameId: string) {
-  const [gameState, setGameState] = useState<GameState | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchGame = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId)
-        .single()
-
-      if (error) throw error
-      if (data) setGameState(mapRowToGameState(data))
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [gameId])
-
-  useEffect(() => {
-    if (!gameId) return
-
-    fetchGame()
-
-    const channel = supabase
-      .channel(`game:${gameId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'games',
-          filter: `id=eq.${gameId}`,
-        },
-        (payload) => {
-          const newGameRow = payload.new as GameRow
-
-          // When the game finishes the Supabase WAL diff payload may truncate
-          // large JSONB columns (players, deck), so we can't trust it to carry
-          // the final hand state. Do a fresh authoritative SELECT instead.
-          if (newGameRow.status === 'finished') {
-            fetchGame()
-            return
-          }
-
-          setGameState(prev => {
-            const newState = mapRowToGameState(newGameRow)
-            // Guard: preserve columns that Supabase omits from WAL diff when unchanged
-            if (prev && newGameRow.deck == null && prev.deck.length > 0) {
-              newState.deck = prev.deck
-            }
-            if (prev && newGameRow.discard_pile == null && prev.discardPile.length > 0) {
-              newState.discardPile = prev.discardPile
-            }
-            return newState
-          })
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [gameId, fetchGame])
-
-  return { gameState, setGameState, loading, error }
-}
-
 function mapRowToGameState(row: GameRow): GameState {
   const players = (row.players as any) || {}
 
@@ -100,5 +29,107 @@ function mapRowToGameState(row: GameRow): GameState {
     callerId: (row as any).caller_id ?? null,
     winnerId: (row as any).winner_id ?? null,
     rematchVotes: (row as any).rematch_votes ?? [],
+    revealVotes: (row as any).reveal_votes ?? [],
   }
+}
+
+export function useGameState(shortCode: string) {
+  const [gameId, setGameId] = useState<string | null>(null)
+  const [gameState, setGameState] = useState<GameState | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchById = useCallback(async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (error) throw error
+      if (data) setGameState(mapRowToGameState(data))
+    } catch (err: any) {
+      setError(err.message)
+    }
+  }, [])
+
+  const fetchByShortCode = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select('*')
+        .eq('short_code', shortCode)
+        .maybeSingle()
+
+      if (error) throw error
+      if (!data) {
+        setError('invalid_code')
+        return
+      }
+      setGameId(data.id)
+      setGameState(mapRowToGameState(data))
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [shortCode])
+
+  useEffect(() => {
+    if (!shortCode) return
+    fetchByShortCode()
+  }, [shortCode, fetchByShortCode])
+
+  useEffect(() => {
+    if (!gameId) return
+
+    const channel = supabase
+      .channel(`game:${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'games',
+          filter: `id=eq.${gameId}`,
+        },
+        (payload) => {
+          const newGameRow = payload.new as GameRow
+
+          // Safety net: re-fetch if a status transition arrives with a null deck (WAL
+          // truncation). Covers 'playing', 'reveal_pending', and 'finished' since those
+          // transitions may come from RPCs that don't explicitly re-write JSONB columns.
+          if (newGameRow.deck == null && ['playing', 'reveal_pending', 'finished'].includes(newGameRow.status ?? '')) {
+            fetchById(gameId)
+            return
+          }
+
+          setGameState(prev => {
+            const newState = mapRowToGameState(newGameRow)
+            if (prev && newGameRow.deck == null && prev.deck.length > 0) {
+              newState.deck = prev.deck
+            }
+            if (prev && newGameRow.discard_pile == null && prev.discardPile.length > 0) {
+              newState.discardPile = prev.discardPile
+            }
+            return newState
+          })
+        }
+      )
+      .subscribe(async (status) => {
+        // Catch-up fetch: if an UPDATE landed between the initial fetch and when
+        // this subscription became active, we would have missed it. Re-fetch once
+        // after the channel is confirmed SUBSCRIBED to close that gap.
+        if (status === 'SUBSCRIBED') {
+          await fetchById(gameId)
+        }
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [gameId, fetchById])
+
+  return { gameState, setGameState, gameId, loading, error }
 }

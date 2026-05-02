@@ -22,12 +22,16 @@ export type Database = {
           deck: Json | null
           discard_pile: Json | null
           drawn_card: Json | null
+          host_id: string | null
           id: string
           last_action_at: string | null
           last_game_action: Json | null
           pending_stack_transfer: Json | null
           players: Json | null
+          rematch_votes: Json | null
+          short_code: string | null
           status: string | null
+          title: string | null
           turn_phase: string | null
           winner_id: string | null
         }
@@ -38,12 +42,16 @@ export type Database = {
           deck?: Json | null
           discard_pile?: Json | null
           drawn_card?: Json | null
+          host_id?: string | null
           id?: string
           last_action_at?: string | null
           last_game_action?: Json | null
           pending_stack_transfer?: Json | null
           players?: Json | null
+          rematch_votes?: Json | null
+          short_code?: string | null
           status?: string | null
+          title?: string | null
           turn_phase?: string | null
           winner_id?: string | null
         }
@@ -54,33 +62,51 @@ export type Database = {
           deck?: Json | null
           discard_pile?: Json | null
           drawn_card?: Json | null
+          host_id?: string | null
           id?: string
           last_action_at?: string | null
           last_game_action?: Json | null
           pending_stack_transfer?: Json | null
           players?: Json | null
+          rematch_votes?: Json | null
+          short_code?: string | null
           status?: string | null
+          title?: string | null
           turn_phase?: string | null
           winner_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "games_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       profiles: {
         Row: {
           avatar_url: string | null
           id: string
+          total_losses: number
+          total_wins: number
           updated_at: string | null
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
           id: string
+          total_losses?: number
+          total_wins?: number
           updated_at?: string | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
           id?: string
+          total_losses?: number
+          total_wins?: number
           updated_at?: string | null
           username?: string | null
         }
@@ -112,8 +138,20 @@ export type Database = {
         Args: { p_game_id: string; p_player_id: string }
         Returns: Json
       }
+      get_head_to_head: {
+        Args: { p_player_id: string; p_opponent_id: string }
+        Returns: Json
+      }
+      get_match_history: {
+        Args: { p_player_id: string }
+        Returns: Json
+      }
       resolve_stack_transfer: {
         Args: { p_game_id: string; p_hand_card_id: string; p_player_id: string }
+        Returns: Json
+      }
+      vote_rematch: {
+        Args: { p_game_id: string; p_player_id: string }
         Returns: Json
       }
     }
