@@ -1,15 +1,14 @@
 import type { GameState, PlayerState, Card } from './types'
 import { createDeck, shuffleDeck, dealCards } from './deck'
-import { determineWinner } from './scoring'
 
 /**
  * Initializes a new game state.
  */
-export function initializeGame(gameId: string, players: { id: string; username: string }[], startingPlayerId?: string): GameState {
+export function initializeGame(gameId: string, players: { id: string; username: string; avatar_url?: string | null }[], startingPlayerId?: string): GameState {
   const deck = shuffleDeck(createDeck())
   const playerIds = players.map(p => p.id)
   const { hands, remainingDeck } = dealCards(deck, playerIds)
-  
+
   // Create discard pile with NO cards (User Request #4)
   const discardPile: Card[] = []
 
@@ -18,6 +17,7 @@ export function initializeGame(gameId: string, players: { id: string; username: 
     playerStates[p.id] = {
       id: p.id,
       username: p.username,
+      avatar_url: p.avatar_url ?? null,
       hand: hands[p.id],
       isReady: false,
       hasCalledReds: false,
@@ -66,6 +66,7 @@ export function setPlayerReady(state: GameState, playerId: string): GameState {
 export function isValidMove(state: GameState, playerId: string): boolean {
   if (state.status !== 'playing' && state.status !== 'final_turn') return false
   if (state.currentTurnPlayerId !== playerId) return false
+  if (state.pendingStackTransfer) return false
   return true
 }
 
@@ -561,17 +562,16 @@ export function skipPower(state: GameState, playerId: string): GameState {
 
 /**
  * Ends the current turn and passes to the next player.
- * When status is 'final_turn', this is the opponent's last move — transition to 'finished'.
+ * When status is 'final_turn', transitions to 'reveal_pending' so both players
+ * can still stack before voting to reveal cards. The winner is calculated server-side
+ * by the vote_reveal RPC once both players confirm.
  */
 function endTurn(state: GameState): GameState {
   if (state.status === 'final_turn') {
-    const callerId = state.callerId!
-    const { winnerId } = determineWinner(state.players, callerId)
-
-    state.status = 'finished'
-    state.winnerId = winnerId
+    state.status = 'reveal_pending'
     state.currentTurnPlayerId = null
     state.turnPhase = 'draw'
+    state.revealVotes = []
     state.lastActionAt = new Date().toISOString()
     return state
   }

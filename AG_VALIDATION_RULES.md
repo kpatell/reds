@@ -90,12 +90,18 @@
     - **Indicators:** Use subtle animations (pulsing border) for "Your Turn" rather than massive banners.
 
 ## 10. Matchmaking (Lobby)
-- **Mechanism:** Simple "Room Code" system.
-    - Host creates game -> Generates 4-character code (e.g., `ABCD`).
-    - Opponent enters code -> Joins lobby.
-- **Requirement:** Do not implement complex matchmaking queues. Keep it manual and simple.
+- **Mechanism:** Hybrid (Public List + Join Code).
+    - Games must generate a 4-6 character `short_code` (e.g., `A7B2`) upon creation.
+    - Routing must use the short code (e.g., `/game/A7B2`) instead of full UUIDs.
+    - Players can join by clicking a game in the public list OR manually entering the `short_code`.
+    - Stale games (inactive for >6 hours) or 'finished' games should be hidden from the active public lobby list.
 
-## 11. LLM Token & Context Management
+## 11. Authentication & Profiles
+- **Auth Provider:** Supabase Auth (Google OAuth or Magic Link/Email).
+- **Requirement:** Users must be prompted to choose a unique `username` (gamertag) upon account creation. Do not auto-populate with their real Google name.
+- **Profiles Table:** Must track `username`, `avatar_id` or `avatar_url` (chosen from a strict predefined list of 6 preset pixel-art avatars, NO custom external URLs), `total_wins`, `total_losses`.
+- **Match History:** The DB must support calculating Win/Loss ratios (overall and Head-to-Head) by querying finished games where the user was a participant.
+## 12. LLM Token & Context Management
 - **Model Selection:**
     - **Claude 3.5 Haiku:** Default for simple tasks, targeted refactors, writing unit tests, and answering isolated questions.
     - **Claude 3.5 Sonnet:** For complex architectural changes, debugging subtle race conditions, or major feature implementations.

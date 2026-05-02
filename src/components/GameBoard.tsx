@@ -5,6 +5,12 @@ import type { GameState } from '@/lib/game/types'
 import { cn } from '@/lib/utils'
 
 
+interface RevealState {
+    iHaveVoted: boolean
+    opponentHasVoted: boolean
+    onVoteReveal: () => void
+}
+
 interface GameBoardProps {
     gameState: GameState
     onDraw?: (source: 'deck' | 'discard') => void
@@ -20,9 +26,10 @@ interface GameBoardProps {
     onCallReds?: () => void
     highlightedCardIds?: string[]
     isDebugMode?: boolean
+    revealState?: RevealState
 }
 
-export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower, onStack, onTransfer, onCallReds, highlightedCardIds, isDebugMode = false }: GameBoardProps) {
+export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower, onStack, onTransfer, onCallReds, highlightedCardIds, isDebugMode = false, revealState }: GameBoardProps) {
     const { user } = useAuth()
 
     if (!user) {
@@ -79,10 +86,10 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     ))
 
     // Can draw from deck/discard?
-    const canDraw = isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase
+    const canDraw = !isStackTransferPhase && isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase
 
-    const isFinalTurn = gameState.status === 'final_turn'
-    const canCallReds = isMyTurn && gameState.turnPhase === 'draw' && gameState.status === 'playing'
+    const canCallReds = !isStackTransferPhase && isMyTurn && gameState.turnPhase === 'draw' && gameState.status === 'playing'
+    const showReadyBadge = gameState.status === 'preview' || gameState.turnPhase === 'peek'
 
     // Centralized action prompt
     let actionPromptText: string | null = null
@@ -130,12 +137,12 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     }
 
     return (
-        <div className="card-game h-full flex flex-col p-2 sm:p-4 relative">
+        <div className="card-game h-full grid grid-rows-[1fr_minmax(200px,auto)_1fr] p-2 sm:p-4 relative">
             {/* Call REDS — ghost button, bottom-right of board */}
             {canCallReds && (
                 <button
                     onClick={() => onCallReds?.()}
-                    className="absolute bottom-4 right-4 z-30 bg-red-500/10 text-red-700 border border-red-500/30 backdrop-blur-md hover:bg-red-500/20 shadow-sm px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-colors"
+                    className="absolute bottom-4 right-4 z-30 cursor-pointer bg-red-500/10 text-red-700 border border-red-500/30 backdrop-blur-md hover:bg-red-500/20 shadow-sm px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-colors"
                 >
                     Call REDS
                 </button>
@@ -185,7 +192,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             {/* ═══════════════════════════════════════════ */}
             {/* TOP ZONE — Opponent Hand                   */}
             {/* ═══════════════════════════════════════════ */}
-            <div className="flex-none flex items-center justify-center pt-10 pb-2 rotate-180 relative">
+            <div className="flex items-center justify-center pt-10 pb-2 rotate-180 relative">
                 {opponent ? (
                     <PlayerHand
                         player={opponent}
@@ -208,10 +215,11 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         highlightedCardIds={highlightedCardIds}
                         beingViewedCardIds={[opponent?.viewingCardId, isPowerLookSwapDecisionPhase ? opponent?.swapSourceCardId : null]}
                         isDebug={isDebugMode}
+                        showReadyBadge={showReadyBadge}
                     />
                 ) : (
                     <div className="text-[var(--color-text-muted)] animate-pulse rotate-180 text-sm">
-                        Waiting...
+                        Waiting for opponent...
                     </div>
                 )}
             </div>
@@ -219,13 +227,13 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             {/* ═══════════════════════════════════════════ */}
             {/* CENTER ZONE — Action Area (Deck + Discard) */}
             {/* ═══════════════════════════════════════════ */}
-            <div className="flex-1 flex items-center justify-center gap-8 sm:gap-12 md:gap-24 min-h-24 relative z-10">
+            <div className="relative flex items-center justify-center gap-8 sm:gap-12 md:gap-24 z-10 pointer-events-none">
 
                 {/* Draw Pile (Left) */}
                 <div
                     onClick={() => canDraw && onDraw?.('deck')}
                     className={cn(
-                        "relative group transition-transform",
+                        "relative group transition-transform pointer-events-auto",
                         canDraw ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-80"
                     )}
                 >
@@ -235,13 +243,13 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                     {/* Stack effect */}
                     <div className="absolute top-1 left-1 h-[var(--card-h)] aspect-[2/3] bg-[var(--color-primary)] rounded-xl -z-10 border-2 border-white/10"></div>
                     <div className="absolute top-2 left-2 h-[var(--card-h)] aspect-[2/3] bg-[var(--color-primary)] rounded-xl -z-20 border-2 border-white/10"></div>
-                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                    <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
                         Deck
                     </div>
                 </div>
 
                 {/* Drawn Card (Center - absolute overlay) */}
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-auto">
                 {gameState.drawnCard && currentPlayer && !isPeekPhase && (
                     <div className="flex flex-col items-center gap-2 animate-in zoom-in-90 fade-in duration-300">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-background)]/80 px-2 py-1 rounded-md backdrop-blur-sm shadow-sm">
@@ -283,7 +291,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                 <div
                     onClick={() => canDraw && onDraw?.('discard')}
                     className={cn(
-                        "relative transition-transform",
+                        "relative transition-transform pointer-events-auto",
                         canDraw ? "cursor-pointer hover:scale-105" : "cursor-not-allowed"
                     )}
                 >
@@ -296,7 +304,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                             Empty
                         </div>
                     )}
-                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                    <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
                         Discard
                     </div>
                 </div>
@@ -305,7 +313,28 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             {/* ═══════════════════════════════════════════ */}
             {/* BOTTOM ZONE — Player Hand                  */}
             {/* ═══════════════════════════════════════════ */}
-            <div className="flex-none flex flex-col items-center justify-center pb-2 relative">
+            <div className="flex flex-col items-center justify-center pb-2 relative">
+                {revealState && (
+                    <div className="flex flex-col items-center gap-1.5 mb-3">
+                        {revealState.opponentHasVoted && !revealState.iHaveVoted && (
+                            <p className="text-xs font-semibold text-red-700">
+                                Opponent is ready to reveal!
+                            </p>
+                        )}
+                        {revealState.iHaveVoted ? (
+                            <div className="px-6 py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide text-stone-400 bg-stone-900/80 border border-stone-700 select-none">
+                                Waiting for opponent…
+                            </div>
+                        ) : (
+                            <button
+                                onClick={revealState.onVoteReveal}
+                                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm uppercase tracking-wide animate-pulse shadow-lg cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 transition-colors"
+                            >
+                                Reveal Cards
+                            </button>
+                        )}
+                    </div>
+                )}
                 {currentPlayer && (
                     <div className="flex flex-col items-center gap-3 relative">
                         <PlayerHand
@@ -336,6 +365,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                             highlightedCardIds={highlightedCardIds}
                             beingViewedCardId={opponent?.viewingCardId}
                             isDebug={isDebugMode}
+                            showReadyBadge={showReadyBadge}
                         />
 
                         {isPeekPhase && !currentPlayer.isReady && (
@@ -352,6 +382,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 Waiting...
                             </div>
                         )}
+
                     </div>
                 )}
             </div>

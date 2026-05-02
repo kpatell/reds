@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Copy, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/components/AuthProvider'
 import { useGameState } from '@/hooks/useGameState'
 import { GameBoard } from '@/components/GameBoard'
 import { ShowdownOverlay } from '@/components/ShowdownOverlay'
+import { RulesModal } from '@/components/RulesModal'
 
 import { supabase } from '@/lib/supabase'
 import {
@@ -17,17 +18,25 @@ import type { Database, Json } from '@/types/supabase'
 
 
 export default function Game() {
-    const { gameId } = useParams()
-    const { user, signInAnonymously, loading: authLoading } = useAuth()
-    const { gameState, loading: gameLoading, error } = useGameState(gameId!)
+    const { shortCode } = useParams()
+    const { user, profile, signInAnonymously, loading: authLoading } = useAuth()
+    const navigate = useNavigate()
+    const { gameState, setGameState, gameId, loading: gameLoading, error } = useGameState(shortCode!)
 
     const [highlightedCardIds, setHighlightedCardIds] = useState<string[]>([])
     const [isDebugMode, setIsDebugMode] = useState(false)
+    const [rulesOpen, setRulesOpen] = useState(false)
+
+    const opponentId = gameState && user
+        ? (Object.keys(gameState.players).find(id => id !== user.id) ?? null)
+        : null
+    const opponentWasPresentRef = useRef(false)
+    const opponentUsernameRef = useRef('Opponent')
 
     // Effect for notifications based on lastAction
     useEffect(() => {
         if (!gameState?.lastGameAction) return
-        if (gameState.status !== 'playing' && gameState.status !== 'final_turn') return
+        if (!['playing', 'final_turn', 'reveal_pending'].includes(gameState.status)) return
 
         const action = gameState.lastGameAction
         const actionTime = new Date(gameState.lastActionAt).getTime()
@@ -92,10 +101,23 @@ export default function Game() {
             if (callerIsMe) {
                 toast.success('You called REDS!')
             } else {
-                toast.warning('Opponent called REDS — this is your final turn!')
+                const callerName = gameState?.players[action.playerId ?? '']?.username ?? 'Opponent'
+                toast.warning(`${callerName} called REDS — this is your final turn!`)
             }
         }
     }, [gameState?.lastActionAt, gameState?.lastGameAction])
+
+    // Notify when opponent has voted to reveal but current player hasn't yet
+    useEffect(() => {
+        if (!gameState || !user || gameState.status !== 'reveal_pending') return
+        const opponentId = Object.keys(gameState.players).find(id => id !== user.id)
+        if (!opponentId) return
+        const votes = gameState.revealVotes ?? []
+        if (votes.includes(opponentId) && !votes.includes(user.id)) {
+            const opponentName = gameState.players[opponentId]?.username ?? 'Opponent'
+            toast.info(`${opponentName} is ready to reveal!`)
+        }
+    }, [(gameState?.revealVotes ?? []).length])
 
     // Notify when opponent votes for rematch but current player hasn't yet
     useEffect(() => {
@@ -104,17 +126,42 @@ export default function Game() {
         if (!opponentId) return
         const votes = gameState.rematchVotes ?? []
         if (votes.includes(opponentId) && !votes.includes(user.id)) {
-            toast.info('Opponent wants to play again!')
+            const opponentName = gameState.players[opponentId]?.username ?? 'Opponent'
+            toast.info(`${opponentName} wants to play again!`)
         }
     }, [(gameState?.rematchVotes ?? []).length])
+
+    // Scenario A: notify me the moment the opponent leaves while I've already voted
+    useEffect(() => {
+        if (!gameState || !user || gameState.status !== 'finished') return
+        if (opponentId) {
+            opponentWasPresentRef.current = true
+            opponentUsernameRef.current = gameState.players[opponentId]?.username ?? 'Opponent'
+            return
+        }
+        if (opponentWasPresentRef.current) {
+            opponentWasPresentRef.current = false
+            if ((gameState.rematchVotes ?? []).includes(user.id)) {
+                toast.info(`${opponentUsernameRef.current} left the game`)
+            }
+        }
+    }, [opponentId, gameState?.status])
 
     // Auto-sign in for guests accessing via link
     useEffect(() => {
         if (!authLoading && !user) {
             console.log('User not authenticated, signing in anonymously...')
-            signInAnonymously().catch(err => console.error('Auto sign-in failed:', err))
+            signInAnonymously().catch((err: unknown) => console.error('Auto sign-in failed:', err))
         }
     }, [authLoading, user, signInAnonymously])
+
+    // Redirect on invalid code
+    useEffect(() => {
+        if (error === 'invalid_code') {
+            toast.error('Invalid Code — no game found.')
+            navigate('/')
+        }
+    }, [error, navigate])
 
     useEffect(() => {
         if (!gameState || !user || !gameId) return
@@ -126,24 +173,23 @@ export default function Game() {
             if (!isPlayerInGame) {
                 // Check if game is full (already has 2 players)
                 if (Object.keys(gameState.players).length >= 2) {
-                    // Spectator mode? Or error? For now, just return.
+                    toast.error('Game is Full')
+                    navigate('/')
                     return
                 }
 
-                // Add myself to players
-
-                // We need a proper PlayerState.
-                // Since we don't have the full profile here, we'll use a placeholder or fetch it.
-                // For anonymous auth, we might not have a username.
-                const username = user.email?.split('@')[0] || 'Guest'
+                const username = profile?.username || user.email?.split('@')[0] || 'Guest'
+                const avatarUrl = profile?.avatar_url ?? null
 
                 // If we are the second player, we START the game.
-                const existingPlayers = Object.values(gameState.players).map(p => ({ id: p.id, username: p.username }))
-                const allPlayers = [...existingPlayers, { id: user.id, username }]
+                const existingPlayers = Object.values(gameState.players).map(p => ({ id: p.id, username: p.username, avatar_url: p.avatar_url ?? null }))
+                const allPlayers = [...existingPlayers, { id: user.id, username, avatar_url: avatarUrl }]
 
                 if (allPlayers.length === 2) {
                     // Initialize Game (Deal cards, etc)
                     const newGameState = initializeGame(gameId, allPlayers)
+                    // Optimistic update so Player B sees their cards before the realtime round-trip
+                    setGameState(newGameState)
 
                     // Update DB
                     const updatePayload: Database['public']['Tables']['games']['Update'] = {
@@ -170,6 +216,7 @@ export default function Game() {
                     const newPlayerState = {
                         id: user.id,
                         username,
+                        avatar_url: avatarUrl,
                         hand: [],
                         isReady: true,
                         hasCalledReds: false,
@@ -211,6 +258,7 @@ export default function Game() {
     }
 
     const handleGameUpdate = async (newGameState: any) => {
+        if (!gameId) return
         const updatePayload: any = {
             status: newGameState.status,
             deck: newGameState.deck as unknown as Json,
@@ -275,6 +323,7 @@ export default function Game() {
         if (!gameState || !user) return
         try {
             const newState = setPlayerReady(gameState, user.id)
+            setGameState(newState)
             await handleGameUpdate(newState)
         } catch (err: any) {
             console.error('Ready failed:', err.message)
@@ -377,11 +426,26 @@ export default function Game() {
                 caller_id: null,
                 pending_stack_transfer: null,
                 rematch_votes: [],
+                reveal_votes: [],
             })
             .eq('id', gameId)
             .eq('status', 'finished') // Guard against duplicate clicks
 
         if (error) toast.error('Failed to start new round')
+    }
+
+    const handleLeave = async () => {
+        if (gameState && user && gameId && gameState.status === 'finished') {
+            try {
+                await supabase.rpc('leave_game', {
+                    p_game_id: gameId,
+                    p_player_id: user.id,
+                })
+            } catch (err) {
+                console.error('Failed to signal leave:', err)
+            }
+        }
+        navigate('/')
     }
 
     const handleVoteRematch = async () => {
@@ -392,12 +456,46 @@ export default function Game() {
                 p_player_id: user.id
             })
             if (error) throw error
-            const result = data as { success: boolean; both_agreed: boolean }
-            if (result?.both_agreed) {
+            const result = data as { success: boolean; both_agreed: boolean; error?: string }
+            if (!result?.success) {
+                throw new Error(result?.error ?? 'Vote rejected by server')
+            }
+            if (result.both_agreed) {
                 await handlePlayAgain()
             }
         } catch (err: unknown) {
+            console.error('[Vote Rematch] Error:', err)
             toast.error(err instanceof Error ? err.message : 'Failed to request rematch')
+        }
+    }
+
+    const handleVoteReveal = async () => {
+        if (!gameState || !user || !gameId) return
+        // Optimistic: reflect this player's vote immediately without waiting for realtime
+        setGameState(prev => {
+            if (!prev || !user) return prev
+            const votes = prev.revealVotes ?? []
+            if (votes.includes(user.id)) return prev
+            return { ...prev, revealVotes: [...votes, user.id] }
+        })
+        try {
+            const { data, error } = await supabase.rpc('vote_reveal', {
+                p_game_id: gameId,
+                p_player_id: user.id
+            })
+            if (error) throw error
+            const result = data as { success: boolean; both_voted: boolean; error?: string }
+            if (!result?.success) {
+                throw new Error(result?.error ?? 'Vote rejected by server')
+            }
+        } catch (err: unknown) {
+            console.error('[Vote Reveal] Error:', err)
+            // Roll back optimistic update on failure
+            setGameState(prev => {
+                if (!prev || !user) return prev
+                return { ...prev, revealVotes: (prev.revealVotes ?? []).filter(id => id !== user.id) }
+            })
+            toast.error(err instanceof Error ? err.message : 'Failed to reveal cards')
         }
     }
 
@@ -447,9 +545,9 @@ export default function Game() {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen gap-4">
                 <div className="text-xl font-bold text-red-600">Game not found</div>
-                <div className="text-sm text-gray-500">ID: {gameId}</div>
-                <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-500 text-white rounded">
-                    Retry
+                <div className="text-sm text-gray-500">Code: {shortCode}</div>
+                <button onClick={() => window.location.href = '/'} className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg text-sm font-medium">
+                    Back to Lobby
                 </button>
             </div>
         )
@@ -458,13 +556,22 @@ export default function Game() {
     const isMyTurn = gameState.currentTurnPlayerId === user?.id
     const isPeekPhase = gameState.turnPhase === 'peek'
     const isFinalTurn = gameState.status === 'final_turn'
+    const isRevealPending = gameState.status === 'reveal_pending'
+
+    const revealVotes = gameState.revealVotes ?? []
+    const iHaveVotedReveal = user ? revealVotes.includes(user.id) : false
+    const opponentHasVotedReveal = opponentId ? revealVotes.includes(opponentId) : false
 
     const turnBannerLabel = isFinalTurn
         ? 'FINAL TURN'
+        : isRevealPending
+        ? 'ROUND OVER'
         : isMyTurn ? 'YOUR TURN' : "OPPONENT'S TURN"
 
     const turnBannerClass = isFinalTurn
         ? 'px-4 py-2 rounded-full font-bold text-sm shadow-md bg-amber-500 text-white animate-pulse'
+        : isRevealPending
+        ? 'px-4 py-2 rounded-full font-bold text-sm shadow-md bg-emerald-600 text-white'
         : isMyTurn
             ? 'px-4 py-2 rounded-full font-bold text-sm transition-all duration-300 shadow-md bg-[var(--color-primary)] text-white'
             : 'px-4 py-2 rounded-full font-bold text-sm transition-all duration-300 shadow-md bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)] opacity-80'
@@ -477,19 +584,44 @@ export default function Game() {
                     <a href="/" className="text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex items-center gap-2">
                         ← Leave
                     </a>
+                    {(user?.email === 'krishanpatel00@gmail.com' || user?.email === 'jskmeta@gmail.com') && (
+                        <button
+                            onClick={() => setIsDebugMode(!isDebugMode)}
+                            className={isDebugMode ? "text-xs font-bold px-2 py-1 rounded transition-colors bg-red-500 text-white" : "text-xs font-bold px-2 py-1 rounded transition-colors bg-gray-200 text-gray-500 hover:bg-gray-300 focus-visible:ring-2 focus-visible:ring-gray-400"}
+                        >
+                            DEV
+                        </button>
+                    )}
                     <button
-                        onClick={() => setIsDebugMode(!isDebugMode)}
-                        className={isDebugMode ? "text-xs font-bold px-2 py-1 rounded transition-colors bg-red-500 text-white" : "text-xs font-bold px-2 py-1 rounded transition-colors bg-gray-200 text-gray-500 hover:bg-gray-300 focus-visible:ring-2 focus-visible:ring-gray-400"}
+                        onClick={() => setRulesOpen(true)}
+                        className="w-7 h-7 flex items-center justify-center text-xs font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)]/80 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                        title="How to Play"
                     >
-                        DEV
+                        ?
                     </button>
                 </div>
 
-                {!isPeekPhase && (
+                {gameState.status === 'waiting' && shortCode ? (
+                    <div className="flex items-center gap-2">
+                        <div className="text-xs font-mono font-bold tracking-widest text-[var(--color-text-muted)] bg-[var(--color-surface)] border border-[var(--color-border)] px-3 py-1.5 rounded-lg">
+                            Room: {shortCode}
+                        </div>
+                        <button
+                            onClick={() => {
+                                navigator.clipboard.writeText(shortCode)
+                                toast.success('Copied to clipboard!')
+                            }}
+                            className="p-1.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                            title="Copy room code"
+                        >
+                            <Copy className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                ) : !isPeekPhase ? (
                     <div className={turnBannerClass}>
                         {turnBannerLabel}
                     </div>
-                )}
+                ) : null}
             </div>
 
             <GameBoard
@@ -507,13 +639,21 @@ export default function Game() {
                 onCallReds={handleCallReds}
                 highlightedCardIds={highlightedCardIds}
                 isDebugMode={isDebugMode}
+                revealState={isRevealPending ? {
+                    iHaveVoted: iHaveVotedReveal,
+                    opponentHasVoted: opponentHasVotedReveal,
+                    onVoteReveal: handleVoteReveal,
+                } : undefined}
             />
+
+            <RulesModal isOpen={rulesOpen} onClose={() => setRulesOpen(false)} />
 
             {user && (
                 <ShowdownOverlay
                     gameState={gameState}
                     currentUserId={user.id}
                     onVoteRematch={handleVoteRematch}
+                    onLeave={handleLeave}
                 />
             )}
         </div>
