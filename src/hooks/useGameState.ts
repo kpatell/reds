@@ -86,6 +86,7 @@ export function useGameState(shortCode: string) {
 
     const channel = supabase
       .channel(`game:${gameId}`)
+      .on('broadcast', { event: 'game_started' }, () => fetchById(gameId))
       .on(
         'postgres_changes',
         {
@@ -94,28 +95,7 @@ export function useGameState(shortCode: string) {
           table: 'games',
           filter: `id=eq.${gameId}`,
         },
-        (payload) => {
-          const newGameRow = payload.new as GameRow
-
-          // Safety net: re-fetch if a status transition arrives with a null deck (WAL
-          // truncation). Covers 'playing', 'reveal_pending', and 'finished' since those
-          // transitions may come from RPCs that don't explicitly re-write JSONB columns.
-          if (newGameRow.deck == null && ['playing', 'reveal_pending', 'finished'].includes(newGameRow.status ?? '')) {
-            fetchById(gameId)
-            return
-          }
-
-          setGameState(prev => {
-            const newState = mapRowToGameState(newGameRow)
-            if (prev && newGameRow.deck == null && prev.deck.length > 0) {
-              newState.deck = prev.deck
-            }
-            if (prev && newGameRow.discard_pile == null && prev.discardPile.length > 0) {
-              newState.discardPile = prev.discardPile
-            }
-            return newState
-          })
-        }
+        () => fetchById(gameId)
       )
       .subscribe(async (status) => {
         // Catch-up fetch: if an UPDATE landed between the initial fetch and when
@@ -130,6 +110,12 @@ export function useGameState(shortCode: string) {
       supabase.removeChannel(channel)
     }
   }, [gameId, fetchById])
+
+  useEffect(() => {
+    if (!gameId || gameState?.status !== 'waiting') return
+    const interval = setInterval(() => fetchById(gameId), 1500)
+    return () => clearInterval(interval)
+  }, [gameId, gameState?.status, fetchById])
 
   return { gameState, setGameState, gameId, loading, error }
 }

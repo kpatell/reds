@@ -17,6 +17,7 @@ export type Database = {
       games: {
         Row: {
           caller_id: string | null
+          connected_players: Json
           created_at: string
           current_turn_player_id: string | null
           deck: Json | null
@@ -29,6 +30,7 @@ export type Database = {
           pending_stack_transfer: Json | null
           players: Json | null
           rematch_votes: Json | null
+          reveal_votes: Json
           short_code: string | null
           status: string | null
           title: string | null
@@ -37,6 +39,7 @@ export type Database = {
         }
         Insert: {
           caller_id?: string | null
+          connected_players?: Json
           created_at?: string
           current_turn_player_id?: string | null
           deck?: Json | null
@@ -49,6 +52,7 @@ export type Database = {
           pending_stack_transfer?: Json | null
           players?: Json | null
           rematch_votes?: Json | null
+          reveal_votes?: Json
           short_code?: string | null
           status?: string | null
           title?: string | null
@@ -57,6 +61,7 @@ export type Database = {
         }
         Update: {
           caller_id?: string | null
+          connected_players?: Json
           created_at?: string
           current_turn_player_id?: string | null
           deck?: Json | null
@@ -69,6 +74,7 @@ export type Database = {
           pending_stack_transfer?: Json | null
           players?: Json | null
           rematch_votes?: Json | null
+          reveal_votes?: Json
           short_code?: string | null
           status?: string | null
           title?: string | null
@@ -123,6 +129,22 @@ export type Database = {
           p_player_id: string
           v_game: Record<string, unknown>
         }
+        Returns: undefined
+      }
+      player_connected: {
+        Args: { p_game_id: string; p_player_id: string }
+        Returns: undefined
+      }
+      player_disconnected: {
+        Args: { p_game_id: string; p_player_id: string }
+        Returns: undefined
+      }
+      vote_reveal: {
+        Args: { p_game_id: string; p_player_id: string }
+        Returns: Json
+      }
+      leave_game: {
+        Args: { p_game_id: string; p_player_id: string }
         Returns: undefined
       }
       attempt_stack: {

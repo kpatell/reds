@@ -293,6 +293,7 @@ export default function ProfilePage() {
                                         ? <Trophy className="w-4 h-4 text-emerald-600 shrink-0" />
                                         : <TrendingDown className="w-4 h-4 text-red-600 shrink-0" />
                                     }
+                                    <AvatarCircle username={match.opponent_username} avatarUrl={match.opponent_avatar_url} size="sm" />
                                     <div>
                                         <p className={`text-sm font-semibold ${match.won ? 'text-emerald-700' : 'text-red-700'}`}>
                                             {match.won ? 'Win' : 'Loss'}
