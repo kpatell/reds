@@ -94,11 +94,19 @@ export function PlayerHand({
         visualHand.push(null)
     }
 
-    const [topIndices, bottomIndices] = splitIntoRows(visualHand.length)
-    const displayHand = !isCurrentUser ? [...visualHand].reverse() : visualHand
+    let [topIndices, bottomIndices] = splitIntoRows(visualHand.length)
+
+    if (!isCurrentUser) {
+        // 180° table rotation: opponent's bottom row (closest to center) becomes
+        // our top row, and both rows flip horizontally (left ↔ right).
+        const newTop = [...bottomIndices].reverse()
+        const newBottom = [...topIndices].reverse()
+        topIndices = newTop
+        bottomIndices = newBottom
+    }
 
     const renderCard = (index: number) => {
-        const card = displayHand[index]
+        const card = visualHand[index]
 
         if (!card) {
             return (
@@ -129,7 +137,7 @@ export function PlayerHand({
                     onClick={() => onCardClick?.(card)}
                     isSelected={selectedCardId === card.id}
                     isDebug={isDebug}
-                    isOpponent={!isCurrentUser}
+
                     className={cn(
                         (!isCurrentUser && !isInteractive) && "cursor-default hover:translate-y-0",
                         // Yellow ring = Active View (I am looking at this card right now)

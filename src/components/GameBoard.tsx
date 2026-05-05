@@ -39,7 +39,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     const { user, profile } = useAuth()
 
     if (!user) {
-        console.warn('GameBoard: No user found, rendering null')
+        if (import.meta.env.DEV) console.warn('GameBoard: No user found, rendering null')
         return null
     }
 
@@ -97,7 +97,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     const canDraw = !isStackTransferPhase && isMyTurn && !isActionPhase && !isPeekPhase && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase
 
     const canCallReds = !isStackTransferPhase && isMyTurn && gameState.turnPhase === 'draw' && gameState.status === 'playing'
-    const showReadyBadge = gameState.status === 'preview' || gameState.turnPhase === 'peek'
+    const showReadyBadge = gameState.status === 'waiting' || gameState.turnPhase === 'peek'
 
     // Centralized action prompt
     let actionPromptText: string | null = null

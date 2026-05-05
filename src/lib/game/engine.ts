@@ -81,8 +81,7 @@ export function drawCard(state: GameState, playerId: string, source: 'deck' | 'd
   let card: Card | undefined
 
   if (source === 'deck') {
-    // DEBUG: Force Draw
-    if (typeof window !== 'undefined') {
+    if (import.meta.env.DEV && typeof localStorage !== 'undefined') {
         const debugRank = localStorage.getItem('debug_next_card')
         if (debugRank) {
             const index = newState.deck.findIndex(c => c.rank === debugRank)
@@ -95,10 +94,10 @@ export function drawCard(state: GameState, playerId: string, source: 'deck' | 'd
                 card = newState.deck.pop()
             }
         } else {
-             card = newState.deck.pop()
+            card = newState.deck.pop()
         }
     } else {
-         card = newState.deck.pop()
+        card = newState.deck.pop()
     }
     // Handle empty deck
     if (newState.deck.length === 0) {
@@ -119,7 +118,7 @@ export function drawCard(state: GameState, playerId: string, source: 'deck' | 'd
              newState.deck = cardsToRecycle
              newState.discardPile = topDiscard ? [topDiscard] : []
              
-             console.log('Deck empty! Recycled discard pile.')
+             if (import.meta.env.DEV) console.log('Deck empty! Recycled discard pile.')
         }
     }
   } else {

@@ -15,11 +15,11 @@ interface CardProps {
     isSelected?: boolean
     className?: string
     isDebug?: boolean
-    isOpponent?: boolean
+
     size?: 'sm' | 'default'
 }
 
-export function Card({ card, onClick, isSelected, className, isDebug, isOpponent, size = 'default' }: CardProps) {
+export function Card({ card, onClick, isSelected, className, isDebug, size = 'default' }: CardProps) {
     const isRed = card.suit === 'hearts' || card.suit === 'diamonds'
     const sm = size === 'sm'
 

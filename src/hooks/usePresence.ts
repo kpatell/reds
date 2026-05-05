@@ -29,7 +29,7 @@ export function usePresence(gameId: string | null, currentUserId: string | null)
       .on('presence', { event: 'join' }, () => syncIds(channel))
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
         // When the opponent leaves, this client notifies the DB so the lobby can see it.
-        const left = leftPresences as Array<{ user_id: string }>
+        const left = leftPresences as unknown as Array<{ user_id: string }>
         const leftId = left[0]?.user_id
         if (leftId && leftId !== currentUserId) {
           supabase.rpc('player_disconnected', {
