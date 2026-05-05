@@ -12,11 +12,49 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      allowed_emails: {
+        Row: {
+          email: string
+        }
+        Insert: {
+          email: string
+        }
+        Update: {
+          email?: string
+        }
+        Relationships: []
+      }
       games: {
         Row: {
           caller_id: string | null
+          caller_player_id: string | null
           connected_players: Json
           created_at: string
           current_turn_player_id: string | null
@@ -31,6 +69,7 @@ export type Database = {
           players: Json | null
           rematch_votes: Json | null
           reveal_votes: Json
+          scores: Json | null
           short_code: string | null
           status: string | null
           title: string | null
@@ -39,6 +78,7 @@ export type Database = {
         }
         Insert: {
           caller_id?: string | null
+          caller_player_id?: string | null
           connected_players?: Json
           created_at?: string
           current_turn_player_id?: string | null
@@ -53,6 +93,7 @@ export type Database = {
           players?: Json | null
           rematch_votes?: Json | null
           reveal_votes?: Json
+          scores?: Json | null
           short_code?: string | null
           status?: string | null
           title?: string | null
@@ -61,6 +102,7 @@ export type Database = {
         }
         Update: {
           caller_id?: string | null
+          caller_player_id?: string | null
           connected_players?: Json
           created_at?: string
           current_turn_player_id?: string | null
@@ -75,6 +117,7 @@ export type Database = {
           players?: Json | null
           rematch_votes?: Json | null
           reveal_votes?: Json
+          scores?: Json | null
           short_code?: string | null
           status?: string | null
           title?: string | null
@@ -88,7 +131,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       profiles: {
@@ -131,22 +174,8 @@ export type Database = {
         }
         Returns: undefined
       }
-      player_connected: {
-        Args: { p_game_id: string; p_player_id: string }
-        Returns: undefined
-      }
-      player_disconnected: {
-        Args: { p_game_id: string; p_player_id: string }
-        Returns: undefined
-      }
-      vote_reveal: {
-        Args: { p_game_id: string; p_player_id: string }
-        Returns: Json
-      }
-      leave_game: {
-        Args: { p_game_id: string; p_player_id: string }
-        Returns: undefined
-      }
+      _card_score: { Args: { v_card: Json }; Returns: number }
+      _hand_score: { Args: { v_hand: Json }; Returns: number }
       attempt_stack: {
         Args: {
           p_game_id: string
@@ -161,18 +190,33 @@ export type Database = {
         Returns: Json
       }
       get_head_to_head: {
-        Args: { p_player_id: string; p_opponent_id: string }
+        Args: { p_opponent_id: string; p_player_id: string }
         Returns: Json
       }
-      get_match_history: {
-        Args: { p_player_id: string }
-        Returns: Json
+      get_match_history: { Args: { p_player_id: string }; Returns: Json }
+      join_game: { Args: { p_game_id: string }; Returns: Json }
+      leave_game: {
+        Args: { p_game_id: string; p_player_id: string }
+        Returns: undefined
+      }
+      player_connected: {
+        Args: { p_game_id: string; p_player_id: string }
+        Returns: undefined
+      }
+      player_disconnected: {
+        Args: { p_game_id: string; p_player_id: string }
+        Returns: undefined
       }
       resolve_stack_transfer: {
         Args: { p_game_id: string; p_hand_card_id: string; p_player_id: string }
         Returns: Json
       }
+      start_game: { Args: { p_game_id: string }; Returns: Json }
       vote_rematch: {
+        Args: { p_game_id: string; p_player_id: string }
+        Returns: Json
+      }
+      vote_reveal: {
         Args: { p_game_id: string; p_player_id: string }
         Returns: Json
       }
@@ -304,6 +348,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

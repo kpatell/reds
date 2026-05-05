@@ -1,35 +1,40 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { GameState } from '@/lib/game/types'
+import type { Card, GameState, PlayerState, TurnPhase } from '@/lib/game/types'
 import type { Database } from '@/types/supabase'
 
 type GameRow = Database['public']['Tables']['games']['Row']
 
 function mapRowToGameState(row: GameRow): GameState {
-  const players = (row.players as any) || {}
+  const players = (row.players as unknown as Record<string, PlayerState>) ?? {}
 
   Object.keys(players).forEach(key => {
     if (!players[key].hand) players[key].hand = []
     if (!players[key].roundsWon) players[key].roundsWon = 0
   })
 
+  // drawn_card persists as { card: Card; source: 'deck'|'discard' } (current write path)
+  // or a bare Card (rows written before the source field was added).
+  type DrawnCardRow = { card: Card; source: 'deck' | 'discard' } | Card
+  const dc = row.drawn_card as DrawnCardRow | null
+
   return {
     id: row.id,
-    status: (row.status as any) || 'waiting',
-    deck: (row.deck as any) || [],
-    discardPile: (row.discard_pile as any) || [],
+    status: (row.status ?? 'waiting') as GameState['status'],
+    deck: (row.deck as unknown as Card[]) ?? [],
+    discardPile: (row.discard_pile as unknown as Card[]) ?? [],
     players,
     currentTurnPlayerId: row.current_turn_player_id,
-    turnPhase: (row.turn_phase as any) || 'draw',
-    drawnCard: (row.drawn_card as any)?.card || (row.drawn_card as any) || null,
-    drawnCardSource: (row.drawn_card as any)?.source || null,
-    pendingStackTransfer: (row.pending_stack_transfer as any) || null,
-    lastActionAt: row.last_action_at || new Date().toISOString(),
-    lastGameAction: (row as any).last_game_action || null,
-    callerId: (row as any).caller_id ?? null,
-    winnerId: (row as any).winner_id ?? null,
-    rematchVotes: (row as any).rematch_votes ?? [],
-    revealVotes: (row as any).reveal_votes ?? [],
+    turnPhase: (row.turn_phase ?? 'draw') as TurnPhase,
+    drawnCard: dc && 'card' in dc ? dc.card : (dc as Card | null),
+    drawnCardSource: dc && 'source' in dc ? dc.source : null,
+    pendingStackTransfer: row.pending_stack_transfer as GameState['pendingStackTransfer'],
+    lastActionAt: row.last_action_at ?? new Date().toISOString(),
+    lastGameAction: row.last_game_action as GameState['lastGameAction'],
+    callerId: row.caller_id,
+    winnerId: row.winner_id,
+    rematchVotes: (row.rematch_votes as string[] | null) ?? [],
+    revealVotes: (row.reveal_votes as string[] | null) ?? [],
   }
 }
 
@@ -87,6 +92,7 @@ export function useGameState(shortCode: string) {
     const channel = supabase
       .channel(`game:${gameId}`)
       .on('broadcast', { event: 'game_started' }, () => fetchById(gameId))
+      .on('broadcast', { event: 'state_updated' }, () => fetchById(gameId))
       .on(
         'postgres_changes',
         {
@@ -111,11 +117,14 @@ export function useGameState(shortCode: string) {
     }
   }, [gameId, fetchById])
 
+  // Deliberate polling failsafe: Supabase Realtime occasionally drops the
+  // `game_started` broadcast on the free tier, so we keep a 1.5s poll while
+  // waiting so Player A never gets stuck on the "waiting for opponent" screen.
   useEffect(() => {
     if (!gameId || gameState?.status !== 'waiting') return
     const interval = setInterval(() => fetchById(gameId), 1500)
     return () => clearInterval(interval)
   }, [gameId, gameState?.status, fetchById])
 
-  return { gameState, setGameState, gameId, loading, error }
+  return { gameState, setGameState, gameId, loading, error, fetchById }
 }

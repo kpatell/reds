@@ -13,19 +13,24 @@ import { RulesModal } from '@/components/RulesModal'
 import { Modal } from '@/components/Modal'
 
 import { supabase } from '@/lib/supabase'
-import {
-    initializeGame, drawCard, discardDrawnCard, swapCard, setPlayerReady,
-    resolvePowerPeekSelf, resolvePowerPeekOpponent, finishPeek,
-    resolvePowerLookSwapDecision, resolvePowerBlindSwap, resolvePowerLookSwap
-} from '@/lib/game/engine'
-import type { Database, Json } from '@/types/supabase'
+
+
+type PlayTurnAction =
+  | { type: 'draw'; source: 'deck' | 'discard' }
+  | { type: 'discard' }
+  | { type: 'swap'; cardId: string }
+  | { type: 'ready' }
+  | { type: 'resolve_power'; targetCardId: string }
+  | { type: 'finish_peek' }
+  | { type: 'power_look_swap_decision'; decision: 'swap' | 'keep' }
+  | { type: 'skip_power' }
 
 
 export default function Game() {
     const { shortCode } = useParams()
-    const { user, profile, signInAnonymously, loading: authLoading } = useAuth()
+    const { user, signInAnonymously, loading: authLoading } = useAuth()
     const navigate = useNavigate()
-    const { gameState, setGameState, gameId, loading: gameLoading, error } = useGameState(shortCode!)
+    const { gameState, setGameState, gameId, loading: gameLoading, error, fetchById } = useGameState(shortCode!)
 
     const [highlightedCardIds, setHighlightedCardIds] = useState<string[]>([])
     const [isDebugMode, setIsDebugMode] = useState(false)
@@ -191,8 +196,10 @@ export default function Game() {
     // Auto-sign in for guests accessing via link
     useEffect(() => {
         if (!authLoading && !user) {
-            console.log('User not authenticated, signing in anonymously...')
-            signInAnonymously().catch((err: unknown) => console.error('Auto sign-in failed:', err))
+            if (import.meta.env.DEV) console.log('User not authenticated, signing in anonymously...')
+            signInAnonymously().catch((err: unknown) => {
+                if (import.meta.env.DEV) console.error('Auto sign-in failed:', err)
+            })
         }
     }, [authLoading, user, signInAnonymously])
 
@@ -208,83 +215,51 @@ export default function Game() {
         if (!gameState || !user || !gameId) return
 
         const joinAndStartGame = async () => {
-            // If I'm not in the game, join it
             const isPlayerInGame = Object.keys(gameState.players).includes(user.id)
+            if (isPlayerInGame) return
 
-            if (!isPlayerInGame) {
-                // Check if game is full (already has 2 players)
-                if (Object.keys(gameState.players).length >= 2) {
+            // Optimistic full check before hitting the server
+            if (Object.keys(gameState.players).length >= 2) {
+                toast.error('Game is Full')
+                navigate('/')
+                return
+            }
+
+            // join_game RPC atomically adds the caller to players (SECURITY DEFINER,
+            // bypasses the "players only" UPDATE policy for the initial join).
+            const { data: joinData, error: joinError } = await supabase.rpc('join_game', {
+                p_game_id: gameId,
+            })
+
+            type JoinResult = { success: boolean; already_joined?: boolean; player_count?: number; error?: string }
+            const result = joinData as JoinResult | null
+
+            if (joinError || !result?.success) {
+                const msg = result?.error ?? joinError?.message ?? 'Failed to join game'
+                if (msg.includes('full') || msg.includes('accepting')) {
                     toast.error('Game is Full')
                     navigate('/')
-                    return
-                }
-
-                const username = profile?.username || user.email?.split('@')[0] || 'Guest'
-                const avatarUrl = profile?.avatar_url ?? null
-
-                // If we are the second player, we START the game.
-                const existingPlayers = Object.values(gameState.players).map(p => ({ id: p.id, username: p.username, avatar_url: p.avatar_url ?? null }))
-                const allPlayers = [...existingPlayers, { id: user.id, username, avatar_url: avatarUrl }]
-
-                if (allPlayers.length === 2) {
-                    if (gameInitializedRef.current) return
-                    gameInitializedRef.current = true
-
-                    // Initialize Game (Deal cards, etc)
-                    const newGameState = initializeGame(gameId, allPlayers)
-                    // Optimistic update so Player B sees their cards before the realtime round-trip
-                    setGameState(newGameState)
-
-                    // Update DB
-                    const updatePayload: Database['public']['Tables']['games']['Update'] = {
-                        status: 'playing',
-                        deck: newGameState.deck as unknown as Json,
-                        discard_pile: newGameState.discardPile as unknown as Json,
-                        players: newGameState.players as unknown as Json,
-                        current_turn_player_id: newGameState.currentTurnPlayerId,
-                        turn_phase: newGameState.turnPhase,
-                        drawn_card: newGameState.drawnCard
-                            ? { ...newGameState.drawnCard, source: newGameState.drawnCardSource } as unknown as Json
-                            : null,
-                        last_action_at: new Date().toISOString()
-                    }
-
-                    const { error } = await (supabase
-                        .from('games') as any)
-                        .update(updatePayload)
-                        .eq('id', gameId)
-
-                    if (error) {
-                        gameInitializedRef.current = false
-                        console.error('Error starting game:', error)
-                    } else {
-                        supabase.channel(`game:${gameId}`).send({ type: 'broadcast', event: 'game_started', payload: {} })
-                    }
                 } else {
-                    // Just join as waiting
-                    const newPlayerState = {
-                        id: user.id,
-                        username,
-                        avatar_url: avatarUrl,
-                        hand: [],
-                        isReady: true,
-                        hasCalledReds: false,
-                        roundsWon: 0
-                    }
+                    toast.error(msg)
+                }
+                return
+            }
 
-                    const newPlayers = {
-                        ...gameState.players,
-                        [user.id]: newPlayerState
-                    }
+            // player_count === 2 means we just became the second player — initialize.
+            if (result.player_count === 2 && !result.already_joined) {
+                if (gameInitializedRef.current) return
+                gameInitializedRef.current = true
 
-                    const { error } = await (supabase
-                        .from('games') as any)
-                        .update({ players: newPlayers as unknown as Json })
-                        .eq('id', gameId)
-
-                    if (error) console.error('Error joining game:', error)
+                const { error } = await supabase.rpc('start_game', { p_game_id: gameId })
+                if (error) {
+                    gameInitializedRef.current = false
+                    if (import.meta.env.DEV) console.error('Error starting game:', error)
+                } else {
+                    supabase.channel(`game:${gameId}`).send({ type: 'broadcast', event: 'game_started', payload: {} })
                 }
             }
+            // player_count === 1: we're the host, waiting for an opponent.
+            // The join_game RPC already persisted us; Realtime will update local state.
         }
 
         joinAndStartGame()
@@ -306,177 +281,99 @@ export default function Game() {
         )
     }
 
-    const handleGameUpdate = async (newGameState: any) => {
-        if (!gameId) return
-        const updatePayload: any = {
-            status: newGameState.status,
-            deck: newGameState.deck as unknown as Json,
-            discard_pile: newGameState.discardPile as unknown as Json,
-            players: newGameState.players as unknown as Json,
-            current_turn_player_id: newGameState.currentTurnPlayerId,
-            turn_phase: newGameState.turnPhase,
-            drawn_card: newGameState.drawnCard
-                ? { ...newGameState.drawnCard, source: newGameState.drawnCardSource } as unknown as Json
-                : null,
-            last_action_at: new Date().toISOString(),
-            last_game_action: newGameState.lastGameAction as unknown as Json,
-            winner_id: newGameState.winnerId ?? null,
-        }
-
-        console.log('[Game Update] Sending payload:', updatePayload)
-
-        const { error } = await (supabase
-            .from('games') as any)
-            .update(updatePayload)
-            .eq('id', gameId)
-
-        if (error) {
-            console.error('[Game Update] Update FAILED:', error)
-        } else {
-            console.log('[Game Update] Update SUCCESS')
+    const invokeTurn = async (action: PlayTurnAction): Promise<void> => {
+        if (!gameId || !user || isProcessingRef.current) return
+        isProcessingRef.current = true
+        setIsProcessing(true)
+        try {
+            const { data, error } = await supabase.functions.invoke('play-turn', {
+                body: { gameId, action },
+            })
+            if (error) throw error
+            if (data?.error) throw new Error(data.error)
+            
+            // Instantly fetch the updated state for the active player
+            await fetchById(gameId)
+            
+            // Ping the opponent via a lightweight broadcast so they fetch instantly too
+            // This bypasses the 8KB limit and occasional lag of Postgres Realtime.
+            supabase.channel(`game:${gameId}`).send({ type: 'broadcast', event: 'state_updated', payload: {} })
+        } finally {
+            isProcessingRef.current = false
+            setIsProcessing(false)
         }
     }
 
     const handleDraw = async (source: 'deck' | 'discard') => {
-        const gs = latestGameState.current
-        if (!gs || !user || isProcessingRef.current) return
-        isProcessingRef.current = true
-        setIsProcessing(true)
         try {
-            const newState = drawCard(gs, user.id, source)
             playDraw()
-            await handleGameUpdate(newState)
-        } catch (err: any) {
-            console.error('Move failed:', err.message)
-        } finally {
-            isProcessingRef.current = false
-            setIsProcessing(false)
+            await invokeTurn({ type: 'draw', source })
+        } catch (err: unknown) {
+            playError()
+            console.error('Move failed:', err instanceof Error ? err.message : err)
         }
     }
 
     const handleDiscard = async () => {
-        const gs = latestGameState.current
-        if (!gs || !user || isProcessingRef.current) return
-        isProcessingRef.current = true
-        setIsProcessing(true)
         try {
-            const newState = discardDrawnCard(gs, user.id)
-            setGameState(newState)
-            await handleGameUpdate(newState)
-        } catch (err: any) {
-            console.error('Move failed:', err.message)
-        } finally {
-            isProcessingRef.current = false
-            setIsProcessing(false)
+            await invokeTurn({ type: 'discard' })
+        } catch (err: unknown) {
+            console.error('Move failed:', err instanceof Error ? err.message : err)
         }
     }
 
     const handleSwap = async (cardId: string) => {
-        const gs = latestGameState.current
-        if (!gs || !user || isProcessingRef.current) return
-        isProcessingRef.current = true
-        setIsProcessing(true)
         try {
-            const newState = swapCard(gs, user.id, cardId)
             playSwap()
-            await handleGameUpdate(newState)
-        } catch (err: any) {
-            console.error('Move failed:', err.message)
-        } finally {
-            isProcessingRef.current = false
-            setIsProcessing(false)
+            await invokeTurn({ type: 'swap', cardId })
+        } catch (err: unknown) {
+            playError()
+            console.error('Move failed:', err instanceof Error ? err.message : err)
         }
     }
 
     const handleReady = async () => {
-        if (!gameState || !user || isProcessingRef.current) return
-        isProcessingRef.current = true
-        setIsProcessing(true)
         try {
-            const newState = setPlayerReady(gameState, user.id)
-            setGameState(newState)
-            await handleGameUpdate(newState)
-        } catch (err: any) {
-            console.error('Ready failed:', err.message)
-        } finally {
-            isProcessingRef.current = false
-            setIsProcessing(false)
+            await invokeTurn({ type: 'ready' })
+        } catch (err: unknown) {
+            console.error('Ready failed:', err instanceof Error ? err.message : err)
         }
     }
 
     const handleResolvePower = async (targetCardId: string) => {
-        if (!gameState || !user || isProcessingRef.current) return
-        isProcessingRef.current = true
-        setIsProcessing(true)
         try {
-            let newGameState
-            if (gameState.turnPhase === 'power_peek_self') {
-                newGameState = resolvePowerPeekSelf(gameState, user.id, targetCardId)
-                playSwap()
-            } else if (gameState.turnPhase === 'power_peek_opponent') {
-                newGameState = resolvePowerPeekOpponent(gameState, user.id, targetCardId)
-                playSwap()
-            } else if (gameState.turnPhase === 'power_blind_swap') {
-                newGameState = resolvePowerBlindSwap(gameState, user.id, targetCardId)
-            } else if (gameState.turnPhase === 'power_look_swap') {
-                newGameState = resolvePowerLookSwap(gameState, user.id, targetCardId)
-                if (!gameState.players[user.id]?.swapSourceCardId) playSwap()
-            } else {
-                return
-            }
-            await handleGameUpdate(newGameState)
-        } catch (error: any) {
-            console.error('Error resolving power:', error)
-        } finally {
-            isProcessingRef.current = false
-            setIsProcessing(false)
+            const phase = gameState?.turnPhase
+            if (phase === 'power_peek_self' || phase === 'power_peek_opponent') playSwap()
+            if (phase === 'power_look_swap') playSwap()
+            await invokeTurn({ type: 'resolve_power', targetCardId })
+        } catch (err: unknown) {
+            console.error('Error resolving power:', err)
+            toast.error(err instanceof Error ? err.message : 'Failed to resolve power')
         }
     }
 
     async function handleFinishPeek() {
-        if (!gameId || !user || isProcessingRef.current) return
-        isProcessingRef.current = true
-        setIsProcessing(true)
         try {
-            const newState = finishPeek(gameState!, user.id)
             playSwap()
-            await handleGameUpdate(newState)
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to finish peek')
-        } finally {
-            isProcessingRef.current = false
-            setIsProcessing(false)
+            await invokeTurn({ type: 'finish_peek' })
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to finish peek')
         }
     }
 
     async function handlePowerLookSwapDecision(action: 'swap' | 'keep') {
-        if (!gameId || !user || isProcessingRef.current) return
-        isProcessingRef.current = true
-        setIsProcessing(true)
         try {
-            const newState = resolvePowerLookSwapDecision(gameState!, user.id, action)
-            await handleGameUpdate(newState)
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to resolve decision')
-        } finally {
-            isProcessingRef.current = false
-            setIsProcessing(false)
+            await invokeTurn({ type: 'power_look_swap_decision', decision: action })
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to resolve decision')
         }
     }
 
     async function handleSkipPower() {
-        if (!gameId || !user || isProcessingRef.current) return
-        isProcessingRef.current = true
-        setIsProcessing(true)
         try {
-            const { skipPower } = await import('@/lib/game/engine')
-            const newState = skipPower(gameState!, user.id)
-            await handleGameUpdate(newState)
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to skip power')
-        } finally {
-            isProcessingRef.current = false
-            setIsProcessing(false)
+            await invokeTurn({ type: 'skip_power' })
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to skip power')
         }
     }
 
@@ -502,30 +399,7 @@ export default function Game() {
 
     const handlePlayAgain = async () => {
         if (!gameState || !user || !gameId || gameState.status !== 'finished') return
-        const winnerId = gameState.winnerId
-        const playersList = Object.values(gameState.players).map(p => ({ id: p.id, username: p.username }))
-        const newState = initializeGame(gameId, playersList, winnerId ?? undefined)
-
-        const { error } = await (supabase.from('games') as any)
-            .update({
-                status: 'playing',
-                deck: newState.deck as unknown as Json,
-                discard_pile: newState.discardPile as unknown as Json,
-                players: newState.players as unknown as Json,
-                current_turn_player_id: newState.currentTurnPlayerId,
-                turn_phase: newState.turnPhase,
-                drawn_card: null,
-                last_action_at: new Date().toISOString(),
-                last_game_action: null,
-                winner_id: null,
-                caller_id: null,
-                pending_stack_transfer: null,
-                rematch_votes: [],
-                reveal_votes: [],
-            })
-            .eq('id', gameId)
-            .eq('status', 'finished') // Guard against duplicate clicks
-
+        const { error } = await supabase.rpc('start_game', { p_game_id: gameId })
         if (error) toast.error('Failed to start new round')
     }
 
@@ -740,7 +614,7 @@ export default function Game() {
                     <button onClick={handleLeave} className="text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex items-center gap-2 cursor-pointer">
                         ← Leave
                     </button>
-                    {(user?.email === 'krishanpatel00@gmail.com' || user?.email === 'jskmeta@gmail.com') && (
+                    {(import.meta.env.VITE_DEV_EMAILS ?? '').split(',').map((e: string) => e.trim()).includes(user?.email ?? '') && (
                         <button
                             onClick={() => setIsDebugMode(!isDebugMode)}
                             className={isDebugMode ? "text-xs font-bold px-2 py-1 rounded transition-colors bg-red-500 text-white" : "text-xs font-bold px-2 py-1 rounded transition-colors bg-gray-200 text-gray-500 hover:bg-gray-300 focus-visible:ring-2 focus-visible:ring-gray-400"}

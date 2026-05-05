@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { AuthProvider, useAuth } from '@/components/AuthProvider'
 import { CompleteProfile } from '@/components/CompleteProfile'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from 'sonner'
 import Lobby from '@/pages/Lobby'
 import Game from '@/pages/Game'
@@ -31,11 +32,13 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <ProfileGate>
-          <Routes>
-            <Route path="/" element={<Lobby />} />
-            <Route path="/game/:shortCode" element={<Game />} />
-            <Route path="/profile" element={<Profile />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Lobby />} />
+              <Route path="/game/:shortCode" element={<Game />} />
+              <Route path="/profile" element={<Profile />} />
+            </Routes>
+          </ErrorBoundary>
         </ProfileGate>
         <Toaster />
       </AuthProvider>
