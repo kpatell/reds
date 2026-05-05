@@ -1,7 +1,9 @@
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import { useAuth } from '@/components/AuthProvider'
 import { Card } from '@/components/Card'
 import { PlayerHand } from '@/components/PlayerHand'
 import type { GameState } from '@/lib/game/types'
+import type { IncomingEmote } from '@/hooks/useEmotes'
 import { cn } from '@/lib/utils'
 
 
@@ -27,10 +29,14 @@ interface GameBoardProps {
     highlightedCardIds?: string[]
     isDebugMode?: boolean
     revealState?: RevealState
+    onSendEmote?: (emoteId: string) => void
+    opponentActiveEmote?: IncomingEmote | null
+    localEmote?: IncomingEmote | null
+    isProcessing?: boolean
 }
 
-export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower, onStack, onTransfer, onCallReds, highlightedCardIds, isDebugMode = false, revealState }: GameBoardProps) {
-    const { user } = useAuth()
+export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower, onStack, onTransfer, onCallReds, highlightedCardIds, isDebugMode = false, revealState, onSendEmote, opponentActiveEmote, localEmote, isProcessing = false }: GameBoardProps) {
+    const { user, profile } = useAuth()
 
     if (!user) {
         console.warn('GameBoard: No user found, rendering null')
@@ -38,6 +44,8 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     }
 
     const currentPlayer = gameState.players[user.id]
+        ? { ...gameState.players[user.id], avatar_url: gameState.players[user.id].avatar_url ?? profile?.avatar_url ?? null }
+        : undefined
     const opponentId = Object.keys(gameState.players).find(id => id !== user.id)
     const opponent = opponentId ? gameState.players[opponentId] : null
 
@@ -137,7 +145,8 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     }
 
     return (
-        <div className="card-game h-full grid grid-rows-[1fr_minmax(200px,auto)_1fr] p-2 sm:p-4 relative">
+        <LayoutGroup id="game-board">
+        <div className={cn("card-game h-full grid grid-rows-[1fr_minmax(200px,auto)_1fr] p-2 sm:p-4 relative", isProcessing && "pointer-events-none opacity-70")}>
             {/* Call REDS — ghost button, bottom-right of board */}
             {canCallReds && (
                 <button
@@ -192,12 +201,13 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             {/* ═══════════════════════════════════════════ */}
             {/* TOP ZONE — Opponent Hand                   */}
             {/* ═══════════════════════════════════════════ */}
-            <div className="flex items-center justify-center pt-10 pb-2 rotate-180 relative">
+            <div className="flex items-center justify-center pt-10 pb-2 relative">
                 {opponent ? (
                     <PlayerHand
                         player={opponent}
                         isCurrentUser={false}
                         isInteractive={isOpponentHandInteractive}
+                        activeEmote={opponentActiveEmote}
                         onCardClick={(card) => {
                             if (isStackTransferPhase) return;
                             if (isMyTurn && isPowerPeekOpponentPhase) {
@@ -218,7 +228,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         showReadyBadge={showReadyBadge}
                     />
                 ) : (
-                    <div className="text-[var(--color-text-muted)] animate-pulse rotate-180 text-sm">
+                    <div className="text-[var(--color-text-muted)] animate-pulse text-sm">
                         Waiting for opponent...
                     </div>
                 )}
@@ -251,15 +261,26 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                 {/* Drawn Card (Center - absolute overlay) */}
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-auto">
                 {gameState.drawnCard && currentPlayer && !isPeekPhase && (
-                    <div className="flex flex-col items-center gap-2 animate-in zoom-in-90 fade-in duration-300">
+                    <motion.div
+                        className="flex flex-col items-center gap-2"
+                        initial={{ x: -150, scale: 0.5, opacity: 0 }}
+                        animate={{ x: 0, scale: 1, opacity: 1 }}
+                        transition={{ type: 'spring', stiffness: 150, damping: 20 }}
+                    >
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-background)]/80 px-2 py-1 rounded-md backdrop-blur-sm shadow-sm">
                             {isMyTurn ? "Current Draw" : "Opponent Drew"}
                         </span>
                         <div className="flex flex-col items-center gap-2 bg-[var(--color-surface)]/90 p-2 rounded-xl backdrop-blur-sm border border-[var(--color-border)] shadow-2xl ring-1 ring-black/5">
-                            <Card
-                                card={{ ...gameState.drawnCard, isFaceUp: showDrawnCard }}
-                                className="shadow-md"
-                            />
+                            <motion.div
+                                initial={{ rotateY: 180 }}
+                                animate={{ rotateY: 0 }}
+                                transition={{ duration: 0.6 }}
+                            >
+                                <Card
+                                    card={{ ...gameState.drawnCard, isFaceUp: showDrawnCard }}
+                                    className="shadow-md"
+                                />
+                            </motion.div>
 
                             {/* Power Hint */}
                             {isMyTurn && gameState.drawnCard && gameState.drawnCardSource === 'deck' && ['7', '8', '9', '10'].includes(gameState.drawnCard.rank) && (
@@ -283,7 +304,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </motion.div>
                 )}
                 </div>
 
@@ -291,19 +312,23 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                 <div
                     onClick={() => canDraw && onDraw?.('discard')}
                     className={cn(
-                        "relative transition-transform pointer-events-auto",
+                        "relative h-[var(--card-h)] aspect-[2/3] transition-transform pointer-events-auto",
                         canDraw ? "cursor-pointer hover:scale-105" : "cursor-not-allowed"
                     )}
                 >
-                    {topCard ? (
-                        <Card
-                            card={{ ...topCard, isFaceUp: true }}
-                        />
-                    ) : (
-                        <div className="h-[var(--card-h)] aspect-[2/3] border-2 border-dashed border-[var(--color-border)] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] text-xs sm:text-sm bg-[var(--color-surface)]/30">
-                            Empty
-                        </div>
+                    {/* Foundation — always rendered so the pile never flickers away during card transitions */}
+                    <div className="absolute inset-0 border-2 border-dashed border-[var(--color-border)] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] text-xs sm:text-sm bg-[var(--color-surface)]/30">
+                        {!topCard && 'Empty'}
+                    </div>
+                    <AnimatePresence>
+                    {topCard && (
+                        <motion.div key={topCard.id} className="absolute inset-0 z-10">
+                            <Card
+                                card={{ ...topCard, isFaceUp: true }}
+                            />
+                        </motion.div>
                     )}
+                    </AnimatePresence>
                     <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
                         Discard
                     </div>
@@ -340,6 +365,8 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         <PlayerHand
                             player={currentPlayer}
                             isCurrentUser={true}
+                            onSendEmote={onSendEmote}
+                            localEmote={localEmote}
                             onCardClick={(card) => {
                                 if (amITransferring) {
                                     onTransfer?.(card.id)
@@ -387,5 +414,6 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                 )}
             </div>
         </div>
+        </LayoutGroup>
     )
 }

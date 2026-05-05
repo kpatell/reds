@@ -1,6 +1,11 @@
+import { useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { Card } from './Card'
 import type { Card as CardType, PlayerState } from '@/lib/game/types'
+import type { IncomingEmote } from '@/hooks/useEmotes'
 import { cn } from '@/lib/utils'
+
+const EMOTE_IDS = ['😡', '😂', '🤔', '⏳'] as const
 
 interface PlayerHandProps {
     player: PlayerState
@@ -17,6 +22,9 @@ interface PlayerHandProps {
     isInteractive?: boolean
     revealViewedCard?: boolean
     showReadyBadge?: boolean
+    onSendEmote?: (emoteId: string) => void
+    activeEmote?: IncomingEmote | null
+    localEmote?: IncomingEmote | null
 }
 
 /**
@@ -51,7 +59,23 @@ export function PlayerHand({
     isInteractive,
     revealViewedCard = true,
     showReadyBadge = true,
+    onSendEmote,
+    activeEmote,
+    localEmote,
 }: PlayerHandProps) {
+    const [pickerOpen, setPickerOpen] = useState(false)
+    const pickerRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (!pickerOpen) return
+        const handler = (e: MouseEvent) => {
+            if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+                setPickerOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handler)
+        return () => document.removeEventListener('mousedown', handler)
+    }, [pickerOpen])
     // Preserve internal nulls so cards stay in their memorized positions
     const visualHand: (CardType | null)[] = [...player.hand]
 
@@ -71,14 +95,16 @@ export function PlayerHand({
     }
 
     const [topIndices, bottomIndices] = splitIntoRows(visualHand.length)
+    const displayHand = !isCurrentUser ? [...visualHand].reverse() : visualHand
 
     const renderCard = (index: number) => {
-        const card = visualHand[index]
+        const card = displayHand[index]
 
         if (!card) {
             return (
-                <div
+                <motion.div
                     key={`empty-${index}`}
+                    layout
                     className="relative group flex items-center justify-center border-2 border-dashed border-[var(--color-border)] rounded-xl opacity-40 bg-black/5 h-[var(--card-h)] aspect-[2/3]"
                 />
             )
@@ -90,7 +116,7 @@ export function PlayerHand({
         const shouldShowFaceUp = overrideFaceUp?.includes(index) || (isViewing && revealViewedCard)
 
         return (
-            <div key={card.id} className="relative group">
+            <motion.div key={card.id} layout className="relative group" style={{ zIndex: isHighlighted ? (isCurrentUser ? 30 : 20) : undefined }} transition={{ layout: { type: 'spring', stiffness: 150, damping: 20 } }}>
                 {(isBeingViewedByOpponent || (isViewing && !isCurrentUser && !revealViewedCard)) && (
                     <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/20 rounded-xl backdrop-blur-[1px] animate-pulse">
                         <div className="bg-white/90 rounded-full p-2 shadow-lg">
@@ -114,12 +140,12 @@ export function PlayerHand({
                         isHighlighted && "ring-4 ring-purple-500 ring-offset-2 ring-offset-[var(--color-background)] shadow-[0_0_15px_rgba(168,85,247,0.5)] z-20"
                     )}
                 />
-            </div>
+            </motion.div>
         )
     }
 
     return (
-        <div className={cn("flex flex-col items-center gap-2", className)}>
+        <div className={cn("flex items-center gap-2", isCurrentUser ? "flex-col" : "flex-col-reverse", className)}>
             <div className="flex flex-col gap-1.5 sm:gap-2 p-2 sm:p-3 bg-[var(--color-surface)]/50 rounded-2xl border border-[var(--color-border)] shadow-sm">
                 {/* Top Row: indices 0, 1, 4, 6, 8... */}
                 <div className="flex gap-1.5 sm:gap-2 justify-center">
@@ -132,17 +158,56 @@ export function PlayerHand({
             </div>
 
             <div className="flex items-center gap-2">
-                {player.avatar_url ? (
-                    <img
-                        src={player.avatar_url}
-                        alt={player.username}
-                        className="w-8 h-8 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]"
-                    />
-                ) : (
-                    <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold">
-                        {player.username.charAt(0).toUpperCase()}
-                    </div>
-                )}
+                {(() => {
+                    const avatarEl = player.avatar_url ? (
+                        <img src={player.avatar_url} alt={player.username} className="w-8 h-8 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]" />
+                    ) : (
+                        <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold">
+                            {player.username.charAt(0).toUpperCase()}
+                        </div>
+                    )
+
+                    if (isCurrentUser && onSendEmote) {
+                        return (
+                            <div className="relative pointer-events-auto" ref={pickerRef}>
+                                {localEmote && (
+                                    <div key={localEmote.nonce} className="emote-bubble absolute text-2xl pointer-events-none select-none z-10">
+                                        {localEmote.emoteId}
+                                    </div>
+                                )}
+                                <button onClick={() => setPickerOpen(v => !v)} className="rounded-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]" title="Send emote">
+                                    {avatarEl}
+                                </button>
+                                {pickerOpen && (
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 flex gap-0.5 p-1.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-xl z-50">
+                                        {EMOTE_IDS.map(emote => (
+                                            <button
+                                                key={emote}
+                                                onClick={() => { onSendEmote(emote); setPickerOpen(false) }}
+                                                className="text-xl p-1 hover:scale-125 transition-transform cursor-pointer rounded"
+                                            >
+                                                {emote}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    }
+
+                    if (!isCurrentUser && activeEmote) {
+                        return (
+                            <div className="relative inline-block">
+                                <div key={activeEmote.nonce} className="emote-bubble absolute text-2xl pointer-events-none select-none z-10">
+                                    {activeEmote.emoteId}
+                                </div>
+                                {avatarEl}
+                            </div>
+                        )
+                    }
+
+                    return avatarEl
+                })()}
                 <span className="font-medium text-[var(--color-text-main)]">{player.username}</span>
                 {showReadyBadge && player.isReady && (
                     <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Ready</span>

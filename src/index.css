@@ -23,6 +23,19 @@
   }
 }
 
+/* Emote bubble — floats up and fades over 3 s; left:50% centers over the avatar */
+@keyframes emote-float {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1);   }
+  75%  { opacity: 1; transform: translateX(-50%) translateY(-24px) scale(1.2); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-36px) scale(1);   }
+}
+.emote-bubble {
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 4px;
+  animation: emote-float 3s ease-out forwards;
+}
+
 /* Card sizing — viewport-relative with aspect-ratio 2/3 */
 /* Height-first: card height is a fraction of svh, width derived from aspect-ratio */
 .card-game {

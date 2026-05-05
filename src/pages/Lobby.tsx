@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { RulesModal } from '@/components/RulesModal'
 import { useNavigate, Link } from 'react-router-dom'
-import { Plus, Loader2, AlertCircle, Users, UserCircle2, ArrowRight } from 'lucide-react'
+import { Plus, Loader2, AlertCircle, Users, UserCircle2, ArrowRight, Trophy, RefreshCw } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import { AuthScreen } from '@/components/AuthScreen'
@@ -14,6 +14,8 @@ type Profile = Database['public']['Tables']['profiles']['Row']
 interface LobbyGame extends Game {
     host: Pick<Profile, 'username' | 'avatar_url'> | null
 }
+
+type LeaderboardEntry = Pick<Profile, 'id' | 'username' | 'avatar_url' | 'total_wins' | 'total_losses'>
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 
@@ -39,6 +41,7 @@ export default function Lobby() {
     const { user, profile, loading: authLoading, signOut } = useAuth()
 
     const [games, setGames] = useState<LobbyGame[]>([])
+    const [rejoinGames, setRejoinGames] = useState<Game[]>([])
     const [loadingGames, setLoadingGames] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
@@ -50,6 +53,11 @@ export default function Lobby() {
     // Join by code state
     const [joinCode, setJoinCode] = useState('')
     const [rulesOpen, setRulesOpen] = useState(false)
+
+    // Leaderboard state
+    const [leaderboardOpen, setLeaderboardOpen] = useState(false)
+    const [leaderboardPlayers, setLeaderboardPlayers] = useState<LeaderboardEntry[]>([])
+    const [leaderboardLoading, setLeaderboardLoading] = useState(false)
 
     useEffect(() => {
         if (!user) return
@@ -66,16 +74,41 @@ export default function Lobby() {
     const fetchGames = async () => {
         const staleThreshold = new Date(Date.now() - SIX_HOURS_MS).toISOString()
 
-        const { data: gamesData } = await supabase
-            .from('games')
-            .select('*')
-            .eq('status', 'waiting')
-            .gt('last_action_at', staleThreshold)
-            .order('created_at', { ascending: false })
+        const [{ data: waitingData }, { data: activeData }] = await Promise.all([
+            supabase
+                .from('games')
+                .select('*')
+                .eq('status', 'waiting')
+                .gt('last_action_at', staleThreshold)
+                .order('created_at', { ascending: false }),
+            supabase
+                .from('games')
+                .select('*')
+                .in('status', ['preview', 'playing', 'final_turn', 'reveal_pending'])
+                .gt('last_action_at', staleThreshold),
+        ])
 
-        if (!gamesData) { setLoadingGames(false); return }
+        // Games where the current user has a seat they can rejoin — includes waiting games
+        // where the user is already in the players map (e.g. host who navigated back).
+        const myGames: Game[] = []
+        if (user) {
+            const allFetched = [...(waitingData ?? []), ...(activeData ?? [])]
+            for (const g of allFetched) {
+                const p = g.players as Record<string, unknown> | null
+                if (p && Object.prototype.hasOwnProperty.call(p, user.id)) {
+                    myGames.push(g)
+                }
+            }
+        }
+        setRejoinGames(myGames)
 
-        const hostIds = [...new Set(gamesData.map(g => g.host_id).filter((id): id is string => !!id))]
+        if (!waitingData) { setLoadingGames(false); return }
+
+        // Exclude games the user is already seated in from the Open Lobby list
+        const myGameIds = new Set(myGames.map(g => g.id))
+        const openGames = waitingData.filter(g => !myGameIds.has(g.id))
+
+        const hostIds = [...new Set(openGames.map(g => g.host_id).filter((id): id is string => !!id))]
 
         let profileMap: Record<string, Pick<Profile, 'username' | 'avatar_url'>> = {}
         if (hostIds.length > 0) {
@@ -86,7 +119,7 @@ export default function Lobby() {
             profileRows?.forEach(p => { profileMap[p.id] = p })
         }
 
-        setGames(gamesData.map(g => ({
+        setGames(openGames.map(g => ({
             ...g,
             host: g.host_id ? (profileMap[g.host_id] ?? null) : null,
         })))
@@ -125,6 +158,22 @@ export default function Lobby() {
         } finally {
             setIsCreating(false)
         }
+    }
+
+    const fetchLeaderboard = async () => {
+        setLeaderboardLoading(true)
+        const { data } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url, total_wins, total_losses')
+            .order('total_wins', { ascending: false })
+            .limit(10)
+        if (data) setLeaderboardPlayers(data as LeaderboardEntry[])
+        setLeaderboardLoading(false)
+    }
+
+    const openLeaderboard = () => {
+        setLeaderboardOpen(true)
+        fetchLeaderboard()
     }
 
     const handleJoinByCode = () => {
@@ -188,6 +237,45 @@ export default function Lobby() {
                 </div>
             </Modal>
 
+            {/* Leaderboard modal */}
+            <Modal isOpen={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} title="Leaderboard">
+                {leaderboardLoading ? (
+                    <div className="flex items-center justify-center py-8 text-[var(--color-text-muted)]">
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        Loading…
+                    </div>
+                ) : leaderboardPlayers.length === 0 ? (
+                    <p className="text-center text-sm text-[var(--color-text-muted)] py-6">No players yet.</p>
+                ) : (
+                    <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+                        {leaderboardPlayers.map((player, i) => {
+                            const total = (player.total_wins ?? 0) + (player.total_losses ?? 0)
+                            const rate = total > 0 ? Math.round((player.total_wins ?? 0) / total * 100) + '%' : '—'
+                            const rankColor = i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-400' : i === 2 ? 'text-amber-600' : 'text-[var(--color-text-muted)]'
+                            return (
+                                <div key={player.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                                    <span className={`w-5 text-sm font-bold text-center shrink-0 ${rankColor}`}>{i + 1}</span>
+                                    <AvatarBubble username={player.username} avatarUrl={player.avatar_url} size="sm" />
+                                    <span className="flex-1 text-sm font-medium text-[var(--color-text-main)] truncate">
+                                        {player.username ?? 'Unknown'}
+                                    </span>
+                                    <div className="flex items-center gap-4 shrink-0">
+                                        <div className="text-center">
+                                            <p className="text-sm font-bold text-[var(--color-text-main)]">{player.total_wins ?? 0}</p>
+                                            <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide">wins</p>
+                                        </div>
+                                        <div className="text-center w-9">
+                                            <p className="text-sm font-bold text-[var(--color-primary)]">{rate}</p>
+                                            <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide">rate</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+            </Modal>
+
             <div className="max-w-2xl w-full space-y-8">
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -198,6 +286,13 @@ export default function Lobby() {
                             className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
                         >
                             How to Play
+                        </button>
+                        <button
+                            onClick={openLeaderboard}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                        >
+                            <Trophy className="w-3.5 h-3.5" />
+                            Leaderboard
                         </button>
                         <Link
                             to="/profile"
@@ -246,6 +341,57 @@ export default function Lobby() {
                         New Game
                     </button>
                 </div>
+
+                {/* In-progress games the user can rejoin */}
+                {rejoinGames.length > 0 && (
+                    <>
+                        <div className="relative py-1">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t border-[var(--color-border)]" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase tracking-wider">
+                                <span className="bg-[var(--color-background)] px-2 text-[var(--color-text-muted)]">Your Games</span>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            {rejoinGames.filter(game => {
+                                const connected = (game.connected_players as string[] | null) ?? []
+                                return connected.length > 0
+                            }).map(game => {
+                                const dest = game.short_code ?? game.id
+                                const connected = (game.connected_players as string[] | null) ?? []
+                                return (
+                                    <button
+                                        key={game.id}
+                                        onClick={() => navigate(`/game/${dest}`)}
+                                        className="w-full flex items-center justify-between bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] px-5 py-5 rounded-xl transition-all border border-[var(--color-border)] shadow-sm hover:shadow-md cursor-pointer group text-left"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors truncate">
+                                                {game.title ?? `Game ${dest}`}
+                                            </p>
+                                            {game.short_code && (
+                                                <p className="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono tracking-wider">
+                                                    {game.short_code}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                                            <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+                                                <Users className="w-3.5 h-3.5" />
+                                                {connected.length}/2
+                                            </span>
+                                            <span className="flex items-center gap-1 text-xs font-medium bg-amber-50 text-amber-700 px-2 py-1 rounded-full border border-amber-200">
+                                                <RefreshCw className="w-3 h-3" />
+                                                Rejoin
+                                            </span>
+                                        </div>
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </>
+                )}
 
                 {/* Open Lobby divider */}
                 <div className="relative py-1">

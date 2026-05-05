@@ -1,5 +1,7 @@
+import React from 'react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { motion } from 'framer-motion'
 import { Heart, Diamond, Club, Spade, Crown } from 'lucide-react'
 import type { Card as CardType, Suit } from '@/lib/game/types'
 
@@ -22,15 +24,22 @@ export function Card({ card, onClick, isSelected, className, isDebug, isOpponent
     const sm = size === 'sm'
 
     return (
-        <div
+        <motion.div
+            layoutId={card.id}
+            layout
             onClick={onClick}
+            whileHover={{ y: -4 }}
+            animate={{ scale: isSelected ? 1.05 : 1 }}
+            transition={{ layout: { type: 'spring', stiffness: 120, damping: 25, duration: 0.6 } }}
+            style={{ containerType: 'inline-size' }}
             className={cn(
-                "relative perspective-1000 cursor-pointer transition-transform duration-200 hover:-translate-y-1",
+                "relative perspective-1000 cursor-pointer",
                 sm ? "w-16 h-24" : "h-[var(--card-h)] aspect-[2/3]",
-                isSelected && "ring-4 ring-[var(--color-primary)] rounded-xl scale-105 z-10",
+                isSelected && "ring-4 ring-[var(--color-primary)] rounded-xl z-10",
                 className
             )}
         >
+            <div className="w-full h-full" style={{ fontSize: '11cqw' }}>
             <div
                 className={cn(
                     "w-full h-full transition-all duration-500 transform-style-3d shadow-md rounded-xl border border-[var(--color-border)]",
@@ -39,19 +48,22 @@ export function Card({ card, onClick, isSelected, className, isDebug, isOpponent
             >
                 {/* Front Face */}
                 {card.isFaceUp && (
-                    <div className={cn("absolute inset-0 backface-hidden bg-[var(--color-surface)] rounded-xl flex flex-col items-center justify-between", sm ? "p-1" : "p-2")}>
-                        <div className={cn("self-start font-bold font-serif", sm ? "text-xs" : "text-lg", isRed ? "text-red-600" : "text-neutral-900")}>
-                            {card.rank}
-                            <SuitIcon suit={card.suit} className={sm ? "w-2.5 h-2.5" : "w-4 h-4"} />
+                    <div className="absolute inset-0 backface-hidden overflow-hidden bg-[var(--color-surface)] rounded-xl flex flex-col justify-between py-[0.8em] px-[0.5em]">
+                        {/* Top Left */}
+                        <div className={cn("flex flex-col items-center self-start", isRed ? "text-red-600" : "text-neutral-900")}>
+                            <span className="font-bold font-serif leading-none" style={{ fontSize: '2.2em' }}>{card.rank}</span>
+                            <SuitIcon suit={card.suit} className="mt-[0.1em]" style={{ width: '1.2em', height: '1.2em' }} />
                         </div>
 
-                        <div className={cn(sm ? "text-2xl" : "text-4xl", isRed ? "text-red-600" : "text-neutral-900")}>
-                            <SuitIcon suit={card.suit} />
+                        {/* Center Giant Suit */}
+                        <div className={cn("flex items-center justify-center", isRed ? "text-red-600" : "text-neutral-900")}>
+                            <SuitIcon suit={card.suit} style={{ width: '2.8em', height: '2.8em' }} />
                         </div>
 
-                        <div className={cn("self-end font-bold font-serif rotate-180", sm ? "text-xs" : "text-lg", isRed ? "text-red-600" : "text-neutral-900")}>
-                            {card.rank}
-                            <SuitIcon suit={card.suit} className={sm ? "w-2.5 h-2.5" : "w-4 h-4"} />
+                        {/* Bottom Right (Rotated) */}
+                        <div className={cn("flex flex-col items-center self-end rotate-180", isRed ? "text-red-600" : "text-neutral-900")}>
+                            <span className="font-bold font-serif leading-none" style={{ fontSize: '2.2em' }}>{card.rank}</span>
+                            <SuitIcon suit={card.suit} className="mt-[0.1em]" style={{ width: '1.2em', height: '1.2em' }} />
                         </div>
                     </div>
                 )}
@@ -66,7 +78,7 @@ export function Card({ card, onClick, isSelected, className, isDebug, isOpponent
                         {isDebug && (
                             <div 
                                 className="absolute inset-0 flex flex-col items-center justify-center text-white bg-black/60 font-bold text-3xl z-[100] rounded-xl pointer-events-none shadow-2xl"
-                                style={{ transform: `translateZ(1px) ${isOpponent ? 'rotateZ(180deg)' : ''}` }}
+                                style={{ transform: 'translateZ(1px)' }}
                             >
                                 <div>{card.rank}</div>
                                 <SuitIcon suit={card.suit} className="w-8 h-8 mt-1" />
@@ -76,11 +88,12 @@ export function Card({ card, onClick, isSelected, className, isDebug, isOpponent
                 )}
             </div>
         </div>
+        </motion.div>
     )
 }
 
-function SuitIcon({ suit, className }: { suit: Suit; className?: string }) {
-    const props = { className: cn("w-full h-full", className) }
+function SuitIcon({ suit, className, style }: { suit: Suit; className?: string; style?: React.CSSProperties }) {
+    const props = { className: cn("w-full h-full", className), style }
     switch (suit) {
         case 'hearts': return <Heart {...props} fill="currentColor" />
         case 'diamonds': return <Diamond {...props} fill="currentColor" />
