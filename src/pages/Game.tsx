@@ -72,6 +72,12 @@ export default function Game() {
         if (processedActionRef.current === signature) return
         processedActionRef.current = signature
 
+        // Play sounds for opponent's actions (actor already played locally)
+        if (action.playerId !== user?.id) {
+            if (action.actionType === 'draw') playDraw()
+            if (['swap', 'power_peek_self', 'power_peek_opponent', 'power_blind_swap', 'power_look_swap', 'power_look_swap_decision', 'finish_peek'].includes(action.actionType)) playSwap()
+        }
+
         // Handle Notifications & Visuals
         if (['swap', 'power_peek_self', 'power_peek_opponent', 'power_blind_swap', 'power_look_swap'].includes(action.actionType)) {
             toast.info(action.description)
@@ -133,6 +139,7 @@ export default function Game() {
             } else {
                 const callerName = gameState?.players[action.playerId ?? '']?.username ?? 'Opponent'
                 toast.warning(`${callerName} called REDS — this is your final turn!`)
+                playReds()
             }
         }
     }, [gameState?.lastActionAt, gameState?.lastGameAction])

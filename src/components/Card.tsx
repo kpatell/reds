@@ -39,7 +39,7 @@ export function Card({ card, onClick, isSelected, className, isDebug, size = 'de
                 className
             )}
         >
-            <div className="w-full h-full" style={{ fontSize: '11cqw' }}>
+            <div className="w-full h-full" style={{ fontSize: 'max(7px, 11cqw)' }}>
             <div
                 className={cn(
                     "w-full h-full transition-all duration-500 transform-style-3d shadow-md rounded-xl border border-[var(--color-border)]",
@@ -49,20 +49,33 @@ export function Card({ card, onClick, isSelected, className, isDebug, size = 'de
                 {/* Front Face */}
                 {card.isFaceUp && (
                     <div className="absolute inset-0 backface-hidden overflow-hidden bg-[var(--color-surface)] rounded-xl flex flex-col justify-between py-[0.8em] px-[0.5em]">
-                        {/* Top Left */}
-                        <div className={cn("flex flex-col items-center self-start", isRed ? "text-red-600" : "text-neutral-900")}>
-                            <span className="font-bold font-serif leading-none" style={{ fontSize: '2.2em' }}>{card.rank}</span>
+
+                        {/* Mobile: single centered rank + suit (replaces corner layout) */}
+                        <div className={cn("sm:hidden absolute inset-0 flex flex-col items-center justify-center gap-[0.25em]", isRed ? "text-red-600" : "text-neutral-900")}>
+                            {card.suit === 'joker' ? (
+                                <SuitIcon suit={card.suit} style={{ width: '4em', height: '4em' }} />
+                            ) : (
+                                <>
+                                    <span className="font-black font-serif leading-none" style={{ fontSize: '3.2em' }}>{card.rank}</span>
+                                    <SuitIcon suit={card.suit} style={{ width: '2.4em', height: '2.4em' }} />
+                                </>
+                            )}
+                        </div>
+
+                        {/* Desktop: top-left corner */}
+                        <div className={cn("hidden sm:flex flex-col items-center self-start", isRed ? "text-red-600" : "text-neutral-900")}>
+                            <span className="font-bold font-serif leading-none text-[2.2em]">{card.rank}</span>
                             <SuitIcon suit={card.suit} className="mt-[0.1em]" style={{ width: '1.2em', height: '1.2em' }} />
                         </div>
 
-                        {/* Center Giant Suit */}
-                        <div className={cn("flex items-center justify-center", isRed ? "text-red-600" : "text-neutral-900")}>
+                        {/* Desktop: center giant suit */}
+                        <div className={cn("hidden sm:flex items-center justify-center", isRed ? "text-red-600" : "text-neutral-900")}>
                             <SuitIcon suit={card.suit} style={{ width: '2.8em', height: '2.8em' }} />
                         </div>
 
-                        {/* Bottom Right (Rotated) */}
-                        <div className={cn("flex flex-col items-center self-end rotate-180", isRed ? "text-red-600" : "text-neutral-900")}>
-                            <span className="font-bold font-serif leading-none" style={{ fontSize: '2.2em' }}>{card.rank}</span>
+                        {/* Desktop: bottom-right corner (rotated) */}
+                        <div className={cn("hidden sm:flex flex-col items-center self-end rotate-180", isRed ? "text-red-600" : "text-neutral-900")}>
+                            <span className="font-bold font-serif leading-none text-[2.2em]">{card.rank}</span>
                             <SuitIcon suit={card.suit} className="mt-[0.1em]" style={{ width: '1.2em', height: '1.2em' }} />
                         </div>
                     </div>
