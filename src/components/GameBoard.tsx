@@ -146,7 +146,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
 
     return (
         <LayoutGroup id="game-board">
-        <div className={cn("card-game h-full grid grid-rows-[1fr_minmax(200px,auto)_1fr] p-2 sm:p-4 relative", isProcessing && "pointer-events-none opacity-70")}>
+        <div className={cn("card-game h-full flex flex-col p-2 sm:p-4 relative", isProcessing && "pointer-events-none opacity-70")}>
             {/* Call REDS — ghost button, bottom-right of board */}
             {canCallReds && (
                 <button
@@ -160,7 +160,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             {/* Centralized Action Prompt — absolutely centered on the board */}
             {actionPromptText && (
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 pointer-events-none">
-                    <div className={cn('px-5 py-2 rounded-full border shadow-lg text-sm font-bold whitespace-nowrap', actionPromptColor)}>
+                    <div className={cn('px-4 sm:px-5 py-2 rounded-full border shadow-lg text-sm font-bold text-center max-w-[92vw] sm:whitespace-nowrap', actionPromptColor)}>
                         {actionPromptText}
                     </div>
                     {hasSkipButton && onSkipPower && (
@@ -201,7 +201,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             {/* ═══════════════════════════════════════════ */}
             {/* TOP ZONE — Opponent Hand                   */}
             {/* ═══════════════════════════════════════════ */}
-            <div className="flex items-center justify-center pt-10 pb-2 relative">
+            <div className="flex-1 min-h-0 flex items-center justify-center pt-14 sm:pt-10 pb-1 relative">
                 {opponent ? (
                     <PlayerHand
                         player={opponent}
@@ -237,13 +237,14 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
             {/* ═══════════════════════════════════════════ */}
             {/* CENTER ZONE — Action Area (Deck + Discard) */}
             {/* ═══════════════════════════════════════════ */}
-            <div className="relative flex items-center justify-center gap-8 sm:gap-12 md:gap-24 z-10 pointer-events-none">
+            <div className="shrink-0 relative flex items-center justify-center gap-8 sm:gap-12 md:gap-24 z-10 pointer-events-none sm:py-6">
 
                 {/* Draw Pile (Left) */}
+                <div className="flex flex-col items-center gap-1.5">
                 <div
                     onClick={() => canDraw && onDraw?.('deck')}
                     className={cn(
-                        "relative group transition-transform pointer-events-auto",
+                        "relative group transition-transform origin-bottom pointer-events-auto",
                         canDraw ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-80"
                     )}
                 >
@@ -253,9 +254,8 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                     {/* Stack effect */}
                     <div className="absolute top-1 left-1 h-[var(--card-h)] aspect-[2/3] bg-[var(--color-primary)] rounded-xl -z-10 border-2 border-white/10"></div>
                     <div className="absolute top-2 left-2 h-[var(--card-h)] aspect-[2/3] bg-[var(--color-primary)] rounded-xl -z-20 border-2 border-white/10"></div>
-                    <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                        Deck
-                    </div>
+                </div>
+                <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider pointer-events-none">Deck</span>
                 </div>
 
                 {/* Drawn Card (Center - absolute overlay) */}
@@ -282,9 +282,9 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 />
                             </motion.div>
 
-                            {/* Power Hint */}
+                            {/* Power Hint — hidden on mobile to prevent off-screen overflow */}
                             {isMyTurn && gameState.drawnCard && gameState.drawnCardSource === 'deck' && ['7', '8', '9', '10'].includes(gameState.drawnCard.rank) && (
-                                <div className="absolute -right-32 top-1/2 -translate-y-1/2 w-28 bg-black/75 text-white text-[10px] p-2 rounded-lg backdrop-blur-sm pointer-events-none animate-in fade-in slide-in-from-left-2">
+                                <div className="hidden sm:block absolute -right-32 top-1/2 -translate-y-1/2 w-28 bg-black/75 text-white text-[10px] p-2 rounded-lg backdrop-blur-sm pointer-events-none animate-in fade-in slide-in-from-left-2">
                                     <p className="font-bold mb-1 text-yellow-400">Power Card!</p>
                                     {gameState.drawnCard.rank === '7' && "Discard to PEEK at one of your own cards."}
                                     {gameState.drawnCard.rank === '8' && "Discard to PEEK at an opponent's card."}
@@ -309,10 +309,11 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                 </div>
 
                 {/* Discard Pile (Right) */}
+                <div className="flex flex-col items-center gap-1.5">
                 <div
                     onClick={() => canDraw && onDraw?.('discard')}
                     className={cn(
-                        "relative h-[var(--card-h)] aspect-[2/3] transition-transform pointer-events-auto",
+                        "relative h-[var(--card-h)] aspect-[2/3] transition-transform origin-bottom pointer-events-auto",
                         canDraw ? "cursor-pointer hover:scale-105" : "cursor-not-allowed"
                     )}
                 >
@@ -329,16 +330,15 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                         </motion.div>
                     )}
                     </AnimatePresence>
-                    <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                        Discard
-                    </div>
+                </div>
+                <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider pointer-events-none">Discard</span>
                 </div>
             </div>
 
             {/* ═══════════════════════════════════════════ */}
             {/* BOTTOM ZONE — Player Hand                  */}
             {/* ═══════════════════════════════════════════ */}
-            <div className="flex flex-col items-center justify-center pb-2 relative">
+            <div className="flex-1 min-h-0 flex flex-col items-center justify-center pb-2 relative">
                 {revealState && (
                     <div className="flex flex-col items-center gap-1.5 mb-3">
                         {revealState.opponentHasVoted && !revealState.iHaveVoted && (

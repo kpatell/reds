@@ -39,11 +39,11 @@ function HandGrid({ hand }: { hand: (CardType | null)[] }) {
       return (
         <div
           key={`empty-${index}`}
-          className="w-16 h-24 rounded-xl border-2 border-dashed border-stone-300 opacity-40 shrink-0"
+          className="h-[var(--card-h)] aspect-[2/3] sm:h-24 sm:w-16 sm:aspect-auto rounded-xl border-2 border-dashed border-stone-300 opacity-40 shrink-0"
         />
       )
     }
-    return <Card key={card.id} card={{ ...card, isFaceUp: true }} size="sm" className="shrink-0 cursor-default" />
+    return <Card key={card.id} card={{ ...card, isFaceUp: true }} className="shrink-0 cursor-default sm:h-24 sm:w-16 sm:aspect-auto" />
   }
 
   return (
@@ -118,11 +118,11 @@ export function ShowdownOverlay({ gameState, currentUserId, onVoteRematch, onLea
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
-      <div className="bg-stone-100 rounded-2xl shadow-2xl w-[95vw] max-w-lg flex flex-col gap-4 p-5 border border-stone-300 my-auto">
+      <div className="card-game bg-stone-100 rounded-2xl shadow-2xl w-[95vw] max-w-lg flex flex-col gap-2 sm:gap-3 p-3 sm:p-5 border border-stone-300 my-auto">
 
         {/* Result banner */}
         <div className={cn(
-          'rounded-xl py-3 text-center font-bold text-xl tracking-widest uppercase',
+          'rounded-xl py-2 sm:py-3 text-center font-bold text-lg sm:text-xl tracking-widest uppercase',
           iWin ? 'bg-red-600 text-white' : 'bg-slate-900 text-white'
         )}>
           {iWin ? 'You Win!' : 'Opponent Wins'}
@@ -193,7 +193,7 @@ function HandSection({ player, score, isWinner, label }: {
   label: string
 }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-1.5 sm:gap-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold uppercase tracking-wider text-stone-600">{label}</span>
         <span className={cn('text-xl font-bold', isWinner ? 'text-red-600' : 'text-slate-900')}>

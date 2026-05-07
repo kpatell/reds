@@ -47,14 +47,14 @@ export function AuthScreen() {
 
     if (confirmationSent) {
         return (
-            <div className="min-h-screen flex items-center justify-center p-4">
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
                 <div className="max-w-sm w-full text-center space-y-4">
                     <div className="w-12 h-12 mx-auto rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
                         <Mail className="w-6 h-6 text-emerald-600" />
                     </div>
                     <h2 className="text-xl font-semibold text-[var(--color-text-main)]">Check your email</h2>
-                    <p className="text-sm text-[var(--color-text-muted)]">
-                        We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then sign in.
+                    <p className="text-sm text-[var(--color-text-muted)] break-words px-2">
+                        We sent a confirmation link to <strong className="break-all">{email}</strong>. Click it to activate your account, then sign in.
                     </p>
                     <button
                         onClick={() => { setConfirmationSent(false); setMode('signin') }}
@@ -63,12 +63,15 @@ export function AuthScreen() {
                         Back to sign in
                     </button>
                 </div>
+                <p className="absolute bottom-4 left-0 right-0 text-center text-xs text-[var(--color-text-muted)] opacity-50 select-none pointer-events-none">
+                    made with ❤️ by krishan patel © 2026
+                </p>
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
             <div className="max-w-sm w-full space-y-6">
                 <div className="text-center">
                     <h1 className="text-5xl font-bold tracking-tighter text-[var(--color-primary)] mb-1 font-serif">REDS</h1>
@@ -175,6 +178,9 @@ export function AuthScreen() {
                     </button>
                 </div>
             </div>
+            <p className="absolute bottom-4 left-0 right-0 text-center text-xs text-[var(--color-text-muted)] opacity-50 select-none pointer-events-none">
+                made with ❤️ by krishan patel © 2026
+            </p>
         </div>
     )
 }

@@ -193,7 +193,7 @@ export default function Lobby() {
     if (!user) return <AuthScreen />
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="h-[100dvh] flex flex-col items-center p-3 sm:p-4 overflow-hidden sm:justify-center">
             <RulesModal isOpen={rulesOpen} onClose={() => setRulesOpen(false)} />
 
             <Modal isOpen={!!error} onClose={() => setError(null)} title="Error">
@@ -276,46 +276,48 @@ export default function Lobby() {
                 )}
             </Modal>
 
-            <div className="max-w-2xl w-full space-y-8">
+            <div className="max-w-2xl w-full flex flex-col flex-1 min-h-0 gap-3 sm:gap-5 sm:flex-none">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                    <h1 className="text-4xl font-bold tracking-tighter text-[var(--color-primary)] font-serif">REDS</h1>
-                    <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2">
+                    <h1 className="text-3xl sm:text-4xl font-bold tracking-tighter text-[var(--color-primary)] font-serif shrink-0">REDS</h1>
+                    <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
                         <button
                             onClick={() => setRulesOpen(true)}
-                            className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                            className="px-2 sm:px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                         >
-                            How to Play
+                            <span className="sm:hidden">?</span>
+                            <span className="hidden sm:inline">How to Play</span>
                         </button>
                         <button
                             onClick={openLeaderboard}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                         >
-                            <Trophy className="w-3.5 h-3.5" />
-                            Leaderboard
+                            <Trophy className="w-3.5 h-3.5 shrink-0" />
+                            <span className="hidden sm:inline">Leaderboard</span>
                         </button>
                         <Link
                             to="/profile"
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors text-sm text-[var(--color-text-main)]"
+                            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors text-sm text-[var(--color-text-main)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                         >
                             {profile?.avatar_url ? (
-                                <img src={profile.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                                <img src={profile.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
                             ) : (
-                                <UserCircle2 className="w-5 h-5 text-[var(--color-text-muted)]" />
+                                <UserCircle2 className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
                             )}
-                            <span className="font-medium">{profile?.username ?? 'Profile'}</span>
+                            <span className="font-medium hidden sm:inline truncate max-w-[8rem]">{profile?.username ?? 'Profile'}</span>
                         </Link>
                         <button
-                            onClick={() => signOut()}
-                            className="px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                            onClick={async () => { await signOut(); navigate('/') }}
+                            className="px-2 sm:px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                         >
-                            Sign out
+                            <span className="sm:hidden">←</span>
+                            <span className="hidden sm:inline">Sign out</span>
                         </button>
                     </div>
                 </div>
 
-                {/* Join via Code + Create Game (same row) */}
-                <div className="flex gap-2">
+                {/* Join via Code + Create Game — stacks on mobile */}
+                <div className="flex flex-col sm:flex-row gap-2">
                     <input
                         type="text"
                         value={joinCode}
@@ -323,23 +325,25 @@ export default function Lobby() {
                         onKeyDown={e => { if (e.key === 'Enter') handleJoinByCode() }}
                         placeholder="Enter code (e.g. A7B2F9)"
                         maxLength={6}
-                        className="flex-1 px-3 py-2.5 text-sm font-mono tracking-widest bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent placeholder:font-sans placeholder:tracking-normal"
+                        className="w-full min-w-0 px-3 py-2.5 text-[16px] sm:text-sm font-mono tracking-widest bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent placeholder:font-sans placeholder:tracking-normal"
                     />
-                    <button
-                        onClick={handleJoinByCode}
-                        disabled={joinCode.length === 0}
-                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border border-[var(--color-border)] text-[var(--color-text-main)] font-medium text-sm rounded-xl transition-colors shrink-0"
-                    >
-                        Join
-                        <ArrowRight className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={openCreateModal}
-                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-medium text-sm rounded-xl transition-colors shrink-0 active:scale-[0.98] cursor-pointer"
-                    >
-                        <Plus className="w-4 h-4" />
-                        New Game
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleJoinByCode}
+                            disabled={joinCode.length === 0}
+                            className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border border-[var(--color-border)] text-[var(--color-text-main)] font-medium text-sm rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                        >
+                            Join
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={openCreateModal}
+                            className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-medium text-sm rounded-xl transition-colors active:scale-[0.98] cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--color-primary-hover)]"
+                        >
+                            <Plus className="w-4 h-4" />
+                            New Game
+                        </button>
+                    </div>
                 </div>
 
                 {/* In-progress games the user can rejoin */}
@@ -353,7 +357,7 @@ export default function Lobby() {
                                 <span className="bg-[var(--color-background)] px-2 text-[var(--color-text-muted)]">Your Games</span>
                             </div>
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
                             {rejoinGames.filter(game => {
                                 const connected = (game.connected_players as string[] | null) ?? []
                                 return connected.length > 0
@@ -364,7 +368,7 @@ export default function Lobby() {
                                     <button
                                         key={game.id}
                                         onClick={() => navigate(`/game/${dest}`)}
-                                        className="w-full flex items-center justify-between bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] px-5 py-5 rounded-xl transition-all border border-[var(--color-border)] shadow-sm hover:shadow-md cursor-pointer group text-left"
+                                        className="w-full flex items-center justify-between bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] px-3 py-3 sm:px-5 sm:py-4 rounded-xl transition-all border border-[var(--color-border)] shadow-sm hover:shadow-md cursor-pointer group text-left"
                                     >
                                         <div className="min-w-0">
                                             <p className="font-medium text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors truncate">
@@ -403,15 +407,15 @@ export default function Lobby() {
                     </div>
                 </div>
 
-                {/* Game list */}
-                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                {/* Game list — takes all remaining viewport height */}
+                <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
                     {loadingGames ? (
                         <div className="flex items-center justify-center py-12 text-[var(--color-text-muted)]">
                             <Loader2 className="w-5 h-5 animate-spin mr-2" />
                             Loading games…
                         </div>
                     ) : games.length === 0 ? (
-                        <div className="text-center py-12 border-2 border-dashed border-[var(--color-border)] rounded-xl">
+                        <div className="text-center py-8 sm:py-12 border-2 border-dashed border-[var(--color-border)] rounded-xl">
                             <p className="text-[var(--color-text-muted)]">No open games.</p>
                             <p className="text-sm text-[var(--color-text-muted)] opacity-70 mt-1">Be the first to create one!</p>
                         </div>
@@ -423,7 +427,7 @@ export default function Lobby() {
                                 <button
                                     key={game.id}
                                     onClick={() => navigate(`/game/${dest}`)}
-                                    className="w-full flex items-center justify-between bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] px-5 py-5 rounded-xl transition-all border border-[var(--color-border)] shadow-sm hover:shadow-md cursor-pointer group text-left"
+                                    className="w-full flex items-center justify-between bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] px-3 py-3 sm:px-5 sm:py-4 rounded-xl transition-all border border-[var(--color-border)] shadow-sm hover:shadow-md cursor-pointer group text-left"
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
                                         <AvatarBubble username={game.host?.username ?? null} avatarUrl={game.host?.avatar_url ?? null} />
@@ -454,6 +458,10 @@ export default function Lobby() {
                     )}
                 </div>
             </div>
+
+            <p className="text-center text-xs text-[var(--color-text-muted)] opacity-50 select-none pt-2 pb-1">
+                made with ❤️ by krishan patel © 2026
+            </p>
         </div>
     )
 }

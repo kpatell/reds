@@ -37,8 +37,14 @@
 }
 
 /* Card sizing — viewport-relative with aspect-ratio 2/3 */
-/* Height-first: card height is a fraction of svh, width derived from aspect-ratio */
+/* Mobile-first: smaller cards so the 3-zone layout fits without overlap */
 .card-game {
-  --card-h: clamp(4.5rem, 12svh, 10rem);
+  --card-h: clamp(3.25rem, 9svh, 5.5rem);
   --card-w: calc(var(--card-h) * 2 / 3);
+}
+@media (min-width: 640px) {
+  .card-game { --card-h: clamp(4rem, 11svh, 8rem); }
+}
+@media (min-width: 768px) {
+  .card-game { --card-h: clamp(4.5rem, 12svh, 10rem); }
 }

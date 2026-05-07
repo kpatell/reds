@@ -216,7 +216,7 @@ export function PlayerHand({
 
                     return avatarEl
                 })()}
-                <span className="font-medium text-[var(--color-text-main)]">{player.username}</span>
+                <span className="font-medium text-[var(--color-text-main)] truncate max-w-[8rem] sm:max-w-none">{player.username}</span>
                 {showReadyBadge && player.isReady && (
                     <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Ready</span>
                 )}
