@@ -4,6 +4,7 @@ import { ArrowLeft, Edit2, Check, X, Loader2, Trophy, TrendingDown } from 'lucid
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import { PRESET_AVATARS } from '@/lib/avatars'
+import { PublicProfileModal } from '@/components/PublicProfileModal'
 import type { Database } from '@/types/supabase'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -57,6 +58,7 @@ export default function ProfilePage() {
     const [matchHistory, setMatchHistory] = useState<MatchRecord[]>([])
     const [loadingHistory, setLoadingHistory] = useState(true)
     const [h2hMap, setH2hMap] = useState<Record<string, H2H>>({})
+    const [publicProfileId, setPublicProfileId] = useState<string | null>(null)
 
     useEffect(() => {
         if (!user) { navigate('/'); return }
@@ -253,7 +255,11 @@ export default function ProfilePage() {
                     <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Head-to-Head</h3>
                     <div className="space-y-2">
                         {opponents.map(opp => (
-                            <div key={opp.id} className="flex items-center justify-between bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-3">
+                            <button
+                                key={opp.id}
+                                onClick={() => setPublicProfileId(opp.id)}
+                                className="w-full flex items-center justify-between bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-3 hover:bg-[var(--color-surface-hover)] transition-colors text-left cursor-pointer"
+                            >
                                 <div className="flex items-center gap-2.5">
                                     <AvatarCircle username={opp.username} avatarUrl={opp.avatarUrl} size="sm" />
                                     <span className="text-sm font-medium text-[var(--color-text-main)]">{opp.username ?? 'Unknown'}</span>
@@ -263,7 +269,7 @@ export default function ProfilePage() {
                                     <span className="text-[var(--color-text-muted)]">–</span>
                                     <span className="font-bold text-red-600">{opp.stats.losses}L</span>
                                 </div>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </div>
@@ -284,9 +290,11 @@ export default function ProfilePage() {
                 ) : (
                     <div className="space-y-2">
                         {matchHistory.map(match => (
-                            <div
+                            <button
                                 key={match.game_id}
-                                className={`flex items-center justify-between p-3 rounded-xl border ${match.won ? 'border-emerald-100 bg-emerald-50' : 'border-red-100 bg-red-50'}`}
+                                onClick={() => { if (match.opponent_id) setPublicProfileId(match.opponent_id) }}
+                                disabled={!match.opponent_id}
+                                className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-colors ${match.won ? 'border-emerald-100 bg-emerald-50 hover:bg-emerald-100' : 'border-red-100 bg-red-50 hover:bg-red-100'} disabled:cursor-default cursor-pointer`}
                             >
                                 <div className="flex items-center gap-2.5">
                                     {match.won
@@ -306,11 +314,13 @@ export default function ProfilePage() {
                                 <span className="text-xs text-[var(--color-text-muted)]">
                                     {new Date(match.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                 </span>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 )}
             </div>
+
+            <PublicProfileModal playerId={publicProfileId} onClose={() => setPublicProfileId(null)} />
         </div>
     )
 }

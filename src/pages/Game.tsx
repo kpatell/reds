@@ -411,21 +411,14 @@ export default function Game() {
     }
 
     const handleLeave = async () => {
-        if (gameState && user && gameId) {
+        if (gameState && user && gameId && gameState.status !== 'finished') {
             try {
-                if (gameState.status === 'finished') {
-                    await supabase.rpc('leave_game', {
-                        p_game_id: gameId,
-                        p_player_id: user.id,
-                    })
-                } else {
-                    // Eagerly mark ourselves disconnected before the component unmounts
-                    // so the lobby count updates without waiting for the WS timeout.
-                    await supabase.rpc('player_disconnected', {
-                        p_game_id: gameId,
-                        p_player_id: user.id,
-                    })
-                }
+                // Eagerly mark ourselves disconnected before the component unmounts
+                // so the lobby count updates without waiting for the WS timeout.
+                await supabase.rpc('player_disconnected', {
+                    p_game_id: gameId,
+                    p_player_id: user.id,
+                })
             } catch (err) {
                 console.error('Failed to signal leave:', err)
             }
@@ -700,6 +693,7 @@ export default function Game() {
                 <ShowdownOverlay
                     gameState={gameState}
                     currentUserId={user.id}
+                    connectedPlayerIds={connectedPlayerIds}
                     onVoteRematch={handleVoteRematch}
                     onLeave={handleLeave}
                 />

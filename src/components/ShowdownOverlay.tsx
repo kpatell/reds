@@ -7,6 +7,7 @@ import type { Card as CardType, GameState, PlayerState } from '@/lib/game/types'
 interface ShowdownOverlayProps {
   gameState: GameState
   currentUserId: string
+  connectedPlayerIds: string[]
   onVoteRematch: () => void
   onLeave: () => void
 }
@@ -66,7 +67,7 @@ interface FrozenState {
   callerId: string | null
 }
 
-export function ShowdownOverlay({ gameState, currentUserId, onVoteRematch, onLeave }: ShowdownOverlayProps) {
+export function ShowdownOverlay({ gameState, currentUserId, connectedPlayerIds, onVoteRematch, onLeave }: ShowdownOverlayProps) {
   // Frozen snapshot of the game state the moment it first enters 'finished'.
   // Once set, it's never downgraded — protects against the opponent leaving and
   // triggering a realtime update that removes them from gameState.players.
@@ -74,18 +75,8 @@ export function ShowdownOverlay({ gameState, currentUserId, onVoteRematch, onLea
 
   useEffect(() => {
     if (gameState.status === 'finished') {
-      setFrozen(prev => {
-        if (!prev) {
-          // Initial capture
-          return { players: gameState.players, winnerId: gameState.winnerId, callerId: gameState.callerId ?? null }
-        }
-        // Upgrade if this update has more players (e.g. snapshot arrived before opponent left)
-        return Object.keys(gameState.players).length > Object.keys(prev.players).length
-          ? { players: gameState.players, winnerId: gameState.winnerId, callerId: gameState.callerId ?? null }
-          : prev
-      })
+      setFrozen(prev => prev ?? { players: gameState.players, winnerId: gameState.winnerId, callerId: gameState.callerId ?? null })
     } else {
-      // New round started — clear snapshot
       setFrozen(null)
     }
   }, [gameState.status, gameState.players, gameState.winnerId, gameState.callerId])
@@ -105,7 +96,7 @@ export function ShowdownOverlay({ gameState, currentUserId, onVoteRematch, onLea
 
   // Live game state drives interactive elements only
   const liveOpponentId = Object.keys(gameState.players).find(id => id !== currentUserId)
-  const opponentLeft = !liveOpponentId
+  const opponentLeft = liveOpponentId ? !connectedPlayerIds.includes(liveOpponentId) : true
 
   const myScore = calculateHandScore(me.hand)
   const opponentScore = displayOpponent ? calculateHandScore(displayOpponent.hand) : 0
