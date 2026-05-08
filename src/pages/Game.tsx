@@ -262,7 +262,7 @@ export default function Game() {
                     gameInitializedRef.current = false
                     if (import.meta.env.DEV) console.error('Error starting game:', error)
                 } else {
-                    supabase.channel(`game:${gameId}`).send({ type: 'broadcast', event: 'game_started', payload: {} })
+                    supabase.channel(`game:${gameId}`).httpSend({ type: 'broadcast', event: 'game_started', payload: {} })
                 }
             }
             // player_count === 1: we're the host, waiting for an opponent.
@@ -304,7 +304,7 @@ export default function Game() {
             
             // Ping the opponent via a lightweight broadcast so they fetch instantly too
             // This bypasses the 8KB limit and occasional lag of Postgres Realtime.
-            supabase.channel(`game:${gameId}`).send({ type: 'broadcast', event: 'state_updated', payload: {} })
+            supabase.channel(`game:${gameId}`).httpSend({ type: 'broadcast', event: 'state_updated', payload: {} })
         } finally {
             isProcessingRef.current = false
             setIsProcessing(false)

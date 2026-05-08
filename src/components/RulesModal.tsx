@@ -23,6 +23,8 @@ export function RulesModal({ isOpen, onClose }: RulesModalProps) {
             <span>Black King (♠ ♣)</span><span className="text-[var(--color-text-muted)]">0 pts</span>
             <span>Red King (♥ ♦)</span><span className="text-red-600 font-semibold">−2 pts</span>
             <span>Ace</span><span className="text-[var(--color-text-muted)]">1 pt</span>
+            <span>Joker <span style={{ background: 'linear-gradient(90deg,#ff4d4d,#ffaa00,#22cc66,#4488ff,#aa44ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>♔</span></span>
+            <span className="text-[var(--color-text-muted)]">0 pts</span>
           </div>
         </section>
 
