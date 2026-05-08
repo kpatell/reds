@@ -62,6 +62,7 @@ export default function Lobby() {
     useEffect(() => {
         if (!user) return
         fetchGames()
+        fetchLeaderboard()
 
         const channel = supabase
             .channel('lobby:games')

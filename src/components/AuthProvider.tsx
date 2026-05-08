@@ -40,15 +40,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true)
     const [profileLoading, setProfileLoading] = useState(false)
 
-    const loadProfile = useCallback(async (userId: string) => {
-        setProfileLoading(true)
+    const loadProfile = useCallback(async (userId: string, isBackground = false) => {
+        if (!isBackground) setProfileLoading(true)
         const { data } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
             .single()
         setProfile(data ?? null)
-        setProfileLoading(false)
+        if (!isBackground) setProfileLoading(false)
     }, [])
 
     useEffect(() => {
@@ -66,13 +66,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         init()
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
             setSession(s)
             setUser(s?.user ?? null)
-            if (s?.user) {
-                setProfileLoading(true)
+            if (s?.user && event === 'SIGNED_IN') {
+                // Only reload profile on actual sign-in.
+                // INITIAL_SESSION is handled by init(); TOKEN_REFRESHED needs no profile reload.
                 loadProfile(s.user.id)
-            } else {
+            } else if (!s?.user) {
                 setProfile(null)
                 setProfileLoading(false)
             }
@@ -121,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const refreshProfile = useCallback(async () => {
-        if (user) await loadProfile(user.id)
+        if (user) await loadProfile(user.id, true)
     }, [user, loadProfile])
 
     return (

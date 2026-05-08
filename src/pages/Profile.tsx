@@ -65,7 +65,6 @@ export default function ProfilePage() {
 
     useEffect(() => {
         if (!user) return
-        refreshProfile()
         fetchHistory()
     }, [user])
 
