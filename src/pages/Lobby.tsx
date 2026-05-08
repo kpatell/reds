@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { RulesModal } from '@/components/RulesModal'
+import { PublicProfileModal } from '@/components/PublicProfileModal'
 import { useNavigate, Link } from 'react-router-dom'
 import { Plus, Loader2, AlertCircle, Users, UserCircle2, ArrowRight, Trophy, RefreshCw } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -58,6 +59,13 @@ export default function Lobby() {
     const [leaderboardOpen, setLeaderboardOpen] = useState(false)
     const [leaderboardPlayers, setLeaderboardPlayers] = useState<LeaderboardEntry[]>([])
     const [leaderboardLoading, setLeaderboardLoading] = useState(false)
+
+    const [publicProfileId, setPublicProfileId] = useState<string | null>(null)
+
+    const openPublicProfile = (id: string) => {
+        setLeaderboardOpen(false)
+        setPublicProfileId(id)
+    }
 
     useEffect(() => {
         if (!user) return
@@ -196,6 +204,7 @@ export default function Lobby() {
     return (
         <div className="h-[100dvh] flex flex-col items-center p-3 sm:p-4 overflow-hidden sm:justify-center">
             <RulesModal isOpen={rulesOpen} onClose={() => setRulesOpen(false)} />
+            <PublicProfileModal playerId={publicProfileId} onClose={() => setPublicProfileId(null)} />
 
             <Modal isOpen={!!error} onClose={() => setError(null)} title="Error">
                 <div className="flex flex-col gap-4">
@@ -254,7 +263,11 @@ export default function Lobby() {
                             const rate = total > 0 ? Math.round((player.total_wins ?? 0) / total * 100) + '%' : '—'
                             const rankColor = i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-400' : i === 2 ? 'text-amber-600' : 'text-[var(--color-text-muted)]'
                             return (
-                                <div key={player.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+                                <div
+                                    key={player.id}
+                                    onClick={() => openPublicProfile(player.id)}
+                                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                                >
                                     <span className={`w-5 text-sm font-bold text-center shrink-0 ${rankColor}`}>{i + 1}</span>
                                     <AvatarBubble username={player.username} avatarUrl={player.avatar_url} size="sm" />
                                     <span className="flex-1 text-sm font-medium text-[var(--color-text-main)] truncate">
@@ -431,7 +444,16 @@ export default function Lobby() {
                                     className="w-full flex items-center justify-between bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] px-3 py-3 sm:px-5 sm:py-4 rounded-xl transition-all border border-[var(--color-border)] shadow-sm hover:shadow-md cursor-pointer group text-left"
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <AvatarBubble username={game.host?.username ?? null} avatarUrl={game.host?.avatar_url ?? null} />
+                                        <span
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={e => { e.stopPropagation(); if (game.host_id) openPublicProfile(game.host_id) }}
+                                            onKeyDown={e => { if (e.key === 'Enter' && game.host_id) { e.stopPropagation(); openPublicProfile(game.host_id) } }}
+                                            className="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                                            title={`View ${game.host?.username ?? 'host'}'s profile`}
+                                        >
+                                            <AvatarBubble username={game.host?.username ?? null} avatarUrl={game.host?.avatar_url ?? null} />
+                                        </span>
                                         <div className="min-w-0">
                                             <p className="font-medium text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors truncate">
                                                 {game.title ?? `Game ${dest}`}

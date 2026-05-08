@@ -53,7 +53,25 @@ export function useGameState(shortCode: string) {
         .maybeSingle()
 
       if (error) throw error
-      if (data) setGameState(mapRowToGameState(data))
+      if (!data) return
+
+      const newState = mapRowToGameState(data)
+
+      // For finished games, merge in any players from the previous state that may
+      // be missing from the incoming row (e.g. a stale broadcast arriving after a
+      // rematch resets the game). The showdown overlay still needs their hands.
+      if (newState.status === 'finished') {
+        setGameState(prev => {
+          if (!prev) return newState
+          const merged = { ...newState.players }
+          for (const [id, player] of Object.entries(prev.players)) {
+            if (!merged[id]) merged[id] = player
+          }
+          return { ...newState, players: merged }
+        })
+      } else {
+        setGameState(newState)
+      }
     } catch (err: any) {
       setError(err.message)
     }
