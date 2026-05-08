@@ -9,6 +9,13 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs))
 }
 
+const JOKER_MASK = `url("data:image/svg+xml,${encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/>' +
+    '<path d="M5 21h14"/>' +
+    '</svg>'
+)}")`
+
 interface CardProps {
     card: CardType
     onClick?: () => void
@@ -65,7 +72,7 @@ export function Card({ card, onClick, isSelected, className, isDebug, size = 'de
                             {/* Desktop: top-left corner */}
                             <div className={cn("hidden sm:flex flex-col items-center self-start", isRed ? "text-red-600" : "text-neutral-900")}>
                                 <span className="font-bold font-serif leading-none text-[2.2em]">{card.rank}</span>
-                                <SuitIcon suit={card.suit} className="mt-[0.1em]" style={{ width: '1.2em', height: '1.2em' }} />
+                                {card.suit !== 'joker' && <SuitIcon suit={card.suit} className="mt-[0.1em]" style={{ width: '1.2em', height: '1.2em' }} />}
                             </div>
 
                             {/* Desktop: center giant suit */}
@@ -76,7 +83,7 @@ export function Card({ card, onClick, isSelected, className, isDebug, size = 'de
                             {/* Desktop: bottom-right corner (rotated) */}
                             <div className={cn("hidden sm:flex flex-col items-center self-end rotate-180", isRed ? "text-red-600" : "text-neutral-900")}>
                                 <span className="font-bold font-serif leading-none text-[2.2em]">{card.rank}</span>
-                                <SuitIcon suit={card.suit} className="mt-[0.1em]" style={{ width: '1.2em', height: '1.2em' }} />
+                                {card.suit !== 'joker' && <SuitIcon suit={card.suit} className="mt-[0.1em]" style={{ width: '1.2em', height: '1.2em' }} />}
                             </div>
                         </div>
                     )}
@@ -112,16 +119,19 @@ function SuitIcon({ suit, className, style }: { suit: Suit; className?: string; 
         case 'diamonds': return <Diamond {...props} fill="currentColor" />
         case 'clubs': return <Club {...props} fill="currentColor" />
         case 'spades': return <Spade {...props} fill="currentColor" />
-        case 'joker': {
-            const heightEm = typeof style?.height === 'string' ? parseFloat(style.height) : 1
-            return (
-                <span
-                    className={cn("flex items-center justify-center leading-none select-none", className)}
-                    style={style}
-                >
-                    <span style={{ fontSize: `${heightEm * 0.85}em` }}>🃏</span>
-                </span>
-            )
-        }
+        case 'joker': return (
+            <span
+                className={cn(className)}
+                style={{
+                    display: 'inline-block',
+                    ...style,
+                    background: 'linear-gradient(135deg, #ff4d4d 0%, #ffaa00 25%, #22cc66 50%, #4488ff 75%, #aa44ff 100%)',
+                    WebkitMaskImage: JOKER_MASK,
+                    WebkitMaskSize: '100% 100%',
+                    maskImage: JOKER_MASK,
+                    maskSize: '100% 100%',
+                }}
+            />
+        )
     }
 }
