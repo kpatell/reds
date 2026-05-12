@@ -70,7 +70,6 @@ export type Database = {
           rematch_votes: Json | null
           reveal_votes: Json
           scores: Json | null
-          next_short_code: string | null
           short_code: string | null
           status: string | null
           title: string | null
@@ -90,7 +89,6 @@ export type Database = {
           id?: string
           last_action_at?: string | null
           last_game_action?: Json | null
-          next_short_code?: string | null
           pending_stack_transfer?: Json | null
           players?: Json | null
           rematch_votes?: Json | null
@@ -115,7 +113,6 @@ export type Database = {
           id?: string
           last_action_at?: string | null
           last_game_action?: Json | null
-          next_short_code?: string | null
           pending_stack_transfer?: Json | null
           players?: Json | null
           rematch_votes?: Json | null

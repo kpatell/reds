@@ -65,5 +65,4 @@ export interface GameState {
   winnerId: string | null
   rematchVotes?: string[]
   revealVotes?: string[]
-  nextShortCode?: string | null
 }
