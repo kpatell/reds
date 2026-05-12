@@ -19,6 +19,7 @@ const JOKER_MASK = `url("data:image/svg+xml,${encodeURIComponent(
 interface CardProps {
     card: CardType
     onClick?: () => void
+    onDoubleClick?: () => void
     isSelected?: boolean
     className?: string
     isDebug?: boolean
@@ -26,7 +27,7 @@ interface CardProps {
     size?: 'sm' | 'default'
 }
 
-export function Card({ card, onClick, isSelected, className, isDebug, size = 'default' }: CardProps) {
+export function Card({ card, onClick, onDoubleClick, isSelected, className, isDebug, size = 'default' }: CardProps) {
     const isRed = card.suit === 'hearts' || card.suit === 'diamonds'
     const sm = size === 'sm'
 
@@ -35,6 +36,7 @@ export function Card({ card, onClick, isSelected, className, isDebug, size = 'de
             layoutId={card.id}
             layout
             onClick={onClick}
+            onDoubleClick={onDoubleClick}
             whileHover={{ y: -4 }}
             animate={{ scale: isSelected ? 1.05 : 1 }}
             transition={{ layout: { type: 'spring', stiffness: 120, damping: 25, duration: 0.6 } }}

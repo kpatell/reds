@@ -19,8 +19,9 @@ export function RulesModal({ isOpen, onClose }: RulesModalProps) {
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Card Values</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
             <span>2 – 10</span><span className="text-[var(--color-text-muted)]">Face value</span>
-            <span>J, Q</span><span className="text-[var(--color-text-muted)]">10 pts</span>
-            <span>Black King (♠ ♣)</span><span className="text-[var(--color-text-muted)]">0 pts</span>
+            <span>J</span><span className="text-[var(--color-text-muted)]">11 pts</span>
+            <span>Q</span><span className="text-[var(--color-text-muted)]">12 pts</span>
+            <span>Black King (♠ ♣)</span><span className="text-[var(--color-text-muted)]">13 pts</span>
             <span>Red King (♥ ♦)</span><span className="text-red-600 font-semibold">−2 pts</span>
             <span>Ace</span><span className="text-[var(--color-text-muted)]">1 pt</span>
             <span>Joker <span style={{ background: 'linear-gradient(90deg,#ff4d4d,#ffaa00,#22cc66,#4488ff,#aa44ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>♔</span></span>
@@ -49,7 +50,7 @@ export function RulesModal({ isOpen, onClose }: RulesModalProps) {
         <section className="space-y-1.5">
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Stacking (Out of Turn)</h3>
           <p className="text-[var(--color-text-muted)] leading-relaxed">
-            When any card is discarded, <strong className="text-[var(--color-text-main)]">either player</strong> can immediately tap a matching-rank card from their hand — or even the opponent's hand — to stack it. First to tap wins; a wrong card earns a penalty.
+            When any card is discarded, <strong className="text-[var(--color-text-main)]">either player</strong> can immediately <strong className="text-[var(--color-text-main)]">double-click a card in your hand</strong> of the same rank to stack it. First to stack wins; a wrong card earns a penalty. Only one stack is allowed per turn.
           </p>
         </section>
 
