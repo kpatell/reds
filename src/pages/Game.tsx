@@ -201,6 +201,31 @@ export default function Game() {
         }
     }, [connectedPlayerIds, opponentId, gameState?.status, user])
 
+    // Fire player_disconnected on tab close/refresh so auto-abandon triggers
+    // even when both players close simultaneously. fetch keepalive survives unload;
+    // sendBeacon cannot set the auth headers Supabase requires.
+    useEffect(() => {
+        if (!gameId || !user?.id) return
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+        const handleBeforeUnload = () => {
+            const status = latestGameState.current?.status
+            if (status === 'finished' || status === 'abandoned') return
+            fetch(`${supabaseUrl}/rest/v1/rpc/player_disconnected`, {
+                method: 'POST',
+                keepalive: true,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': supabaseAnonKey,
+                    'Authorization': `Bearer ${supabaseAnonKey}`,
+                },
+                body: JSON.stringify({ p_game_id: gameId, p_player_id: user.id }),
+            })
+        }
+        window.addEventListener('beforeunload', handleBeforeUnload)
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    }, [gameId, user?.id])
+
     // Auto-sign in for guests accessing via link
     useEffect(() => {
         if (!authLoading && !user) {
