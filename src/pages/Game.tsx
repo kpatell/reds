@@ -404,11 +404,14 @@ export default function Game() {
         }
     }
 
-    const handlePlayAgain = async () => {
-        if (!gameState || !user || !gameId || gameState.status !== 'finished') return
-        const { error } = await supabase.rpc('start_game', { p_game_id: gameId })
-        if (error) toast.error('Failed to start new round')
-    }
+    // Navigate to the new game when vote_rematch stamps next_short_code on this row.
+    // The player who cast the final vote navigates immediately from the RPC response;
+    // the other player arrives here via their realtime subscription firing.
+    useEffect(() => {
+        if (!gameState?.nextShortCode || gameState.status !== 'finished') return
+        if (gameState.nextShortCode === shortCode) return
+        navigate(`/game/${gameState.nextShortCode}`)
+    }, [gameState?.nextShortCode, gameState?.status])
 
     const handleLeave = async () => {
         if (gameState && user && gameId && gameState.status !== 'finished') {
@@ -434,12 +437,13 @@ export default function Game() {
                 p_player_id: user.id
             })
             if (error) throw error
-            const result = data as { success: boolean; both_agreed: boolean; error?: string }
+            type VoteResult = { success: boolean; both_agreed: boolean; next_short_code?: string; error?: string }
+            const result = data as VoteResult | null
             if (!result?.success) {
                 throw new Error(result?.error ?? 'Vote rejected by server')
             }
-            if (result.both_agreed) {
-                await handlePlayAgain()
+            if (result.both_agreed && result.next_short_code) {
+                navigate(`/game/${result.next_short_code}`)
             }
         } catch (err: unknown) {
             console.error('[Vote Rematch] Error:', err)

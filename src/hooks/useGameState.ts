@@ -35,6 +35,7 @@ function mapRowToGameState(row: GameRow): GameState {
     winnerId: row.winner_id,
     rematchVotes: (row.rematch_votes as string[] | null) ?? [],
     revealVotes: (row.reveal_votes as string[] | null) ?? [],
+    nextShortCode: row.next_short_code ?? null,
   }
 }
 
