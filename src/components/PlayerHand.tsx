@@ -11,6 +11,7 @@ interface PlayerHandProps {
     player: PlayerState
     isCurrentUser: boolean
     onCardClick?: (card: CardType) => void
+    onCardDoubleClick?: (card: CardType) => void
     selectedCardId?: string | null
     className?: string
     overrideFaceUp?: number[] // Indices of cards to force face up
@@ -48,6 +49,7 @@ export function PlayerHand({
     player,
     isCurrentUser,
     onCardClick,
+    onCardDoubleClick,
     selectedCardId,
     className,
     overrideFaceUp,
@@ -135,6 +137,7 @@ export function PlayerHand({
                 <Card
                     card={shouldShowFaceUp ? { ...card, isFaceUp: true } : card}
                     onClick={() => onCardClick?.(card)}
+                    onDoubleClick={onCardDoubleClick ? () => onCardDoubleClick(card) : undefined}
                     isSelected={selectedCardId === card.id}
                     isDebug={isDebug}
 

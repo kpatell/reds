@@ -214,7 +214,11 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                 onResolvePower?.(card.id)
                             } else if (isMyTurn && isPowerActionStep2) {
                                 onResolvePower?.(card.id)
-                            } else if (topCard && !isPeekPhase && !isPowerPeekViewingPhase && !isPowerLookSwapDecisionPhase) {
+                            }
+                        }}
+                        onCardDoubleClick={(card) => {
+                            if (isStackTransferPhase) return;
+                            if (topCard && !isPeekPhase && !isPowerPeekViewingPhase && !isPowerLookSwapDecisionPhase) {
                                 onStack?.(card.id, topCard.id)
                             }
                         }}
@@ -378,8 +382,11 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                     onSwap?.(card.id)
                                 } else if ((isPowerPeekSelfPhase || isPowerBlindSwapPhase || isPowerLookSwapPhase) && isMyTurn) {
                                     onResolvePower?.(card.id)
-                                } else if (topCard && !isPeekPhase && !isPowerPeekViewingPhase && !isPowerLookSwapDecisionPhase) {
-                                    // Try to stack if not doing another action
+                                }
+                            }}
+                            onCardDoubleClick={(card) => {
+                                if (amITransferring || isStackTransferPhase) return;
+                                if (topCard && !isPeekPhase && !isPowerPeekViewingPhase && !isPowerLookSwapDecisionPhase) {
                                     onStack?.(card.id, topCard.id)
                                 }
                             }}
