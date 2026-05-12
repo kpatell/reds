@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit2, Check, X, Loader2, Trophy, TrendingDown } from 'lucide-react'
+import { ArrowLeft, Edit2, Check, X, Loader2, Trophy, TrendingDown, MinusCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import { PRESET_AVATARS } from '@/lib/avatars'
@@ -10,9 +10,11 @@ import type { Database } from '@/types/supabase'
 type Profile = Database['public']['Tables']['profiles']['Row']
 
 interface MatchRecord {
+    id: string            // match_results.id — unique per record, use as React key
     game_id: string
     created_at: string
     won: boolean
+    abandoned: boolean
     opponent_id: string | null
     opponent_username: string | null
     opponent_avatar_url: string | null
@@ -85,7 +87,7 @@ export default function ProfilePage() {
     const computeH2H = (records: MatchRecord[]) => {
         const map: Record<string, H2H> = {}
         for (const r of records) {
-            if (!r.opponent_id) continue
+            if (!r.opponent_id || r.abandoned) continue  // abandoned games don't count
             if (!map[r.opponent_id]) map[r.opponent_id] = { wins: 0, losses: 0 }
             if (r.won) map[r.opponent_id].wins++
             else map[r.opponent_id].losses++
@@ -291,20 +293,29 @@ export default function ProfilePage() {
                     <div className="space-y-2">
                         {matchHistory.map(match => (
                             <button
-                                key={match.game_id}
-                                onClick={() => { if (match.opponent_id) setPublicProfileId(match.opponent_id) }}
-                                disabled={!match.opponent_id}
-                                className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-colors ${match.won ? 'border-emerald-100 bg-emerald-50 hover:bg-emerald-100' : 'border-red-100 bg-red-50 hover:bg-red-100'} disabled:cursor-default cursor-pointer`}
+                                key={match.id}
+                                onClick={() => { if (!match.abandoned && match.opponent_id) setPublicProfileId(match.opponent_id) }}
+                                disabled={match.abandoned || !match.opponent_id}
+                                className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-colors disabled:cursor-default
+                                    ${match.abandoned
+                                        ? 'border-stone-200 bg-stone-100'
+                                        : match.won
+                                            ? 'border-emerald-100 bg-emerald-50 hover:bg-emerald-100 cursor-pointer'
+                                            : 'border-red-100 bg-red-50 hover:bg-red-100 cursor-pointer'
+                                    }`}
                             >
                                 <div className="flex items-center gap-2.5">
-                                    {match.won
-                                        ? <Trophy className="w-4 h-4 text-emerald-600 shrink-0" />
-                                        : <TrendingDown className="w-4 h-4 text-red-600 shrink-0" />
+                                    {match.abandoned
+                                        ? <MinusCircle className="w-4 h-4 text-stone-400 shrink-0" />
+                                        : match.won
+                                            ? <Trophy className="w-4 h-4 text-emerald-600 shrink-0" />
+                                            : <TrendingDown className="w-4 h-4 text-red-600 shrink-0" />
                                     }
                                     <AvatarCircle username={match.opponent_username} avatarUrl={match.opponent_avatar_url} size="sm" />
                                     <div>
-                                        <p className={`text-sm font-semibold ${match.won ? 'text-emerald-700' : 'text-red-700'}`}>
-                                            {match.won ? 'Win' : 'Loss'}
+                                        <p className={`text-sm font-semibold
+                                            ${match.abandoned ? 'text-stone-500' : match.won ? 'text-emerald-700' : 'text-red-700'}`}>
+                                            {match.abandoned ? 'Abandoned' : match.won ? 'Win' : 'Loss'}
                                         </p>
                                         <p className="text-xs text-[var(--color-text-muted)]">
                                             vs {match.opponent_username ?? 'Unknown'}

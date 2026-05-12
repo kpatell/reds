@@ -93,8 +93,9 @@ export default function Game() {
             }
         }
 
-        if (action.actionType === 'power_skip') {
-            toast.info("Opponent declined to swap (Power 9)")
+        if (action.actionType === 'power_skip' && action.playerId !== user?.id) {
+            const skipperName = gameState?.players[action.playerId ?? '']?.username ?? 'Opponent'
+            toast.info(`${skipperName} declined to swap (Power 9)`)
         }
 
         if (action.actionType === 'stack_failed') {

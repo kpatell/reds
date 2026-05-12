@@ -116,7 +116,7 @@ export function ShowdownOverlay({ gameState, currentUserId, connectedPlayerIds, 
           'rounded-xl py-2 sm:py-3 text-center font-bold text-lg sm:text-xl tracking-widest uppercase',
           iWin ? 'bg-red-600 text-white' : 'bg-slate-900 text-white'
         )}>
-          {iWin ? 'You Win!' : 'Opponent Wins'}
+          {iWin ? 'You Win!' : `${displayOpponent?.username ?? 'Opponent'} Wins!`}
         </div>
 
         {/* REDS caller attribution */}
@@ -142,18 +142,18 @@ export function ShowdownOverlay({ gameState, currentUserId, connectedPlayerIds, 
         <div className="flex flex-col gap-2">
           {opponentLeft ? (
             <p className="text-center text-sm font-bold text-slate-900 bg-stone-200 border border-stone-300 rounded-xl py-3 px-4">
-              Opponent has left the game
+              {displayOpponent?.username ?? 'Opponent'} has left the game
             </p>
           ) : (
             <>
               {opponentVoted && !myVote && (
                 <p className="text-center text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg py-1.5 px-3">
-                  Opponent wants to play again!
+                  {displayOpponent?.username ?? 'Opponent'} wants to play again!
                 </p>
               )}
               {myVote ? (
                 <div className="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wide text-center text-stone-400 bg-stone-100 border border-stone-200 cursor-not-allowed select-none">
-                  Waiting for opponent...
+                  Waiting for {displayOpponent?.username ?? 'opponent'}...
                 </div>
               ) : (
                 <button
