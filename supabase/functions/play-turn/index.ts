@@ -86,6 +86,13 @@ Deno.serve(async (req: Request) => {
     const players = (row.players as Record<string, unknown>) ?? {}
     if (!(user.id in players)) return json({ error: 'You are not in this game' }, 403)
 
+    if (action.type === 'draw' && action.forceCardRank) {
+      const devEmails = (Deno.env.get('VITE_DEV_EMAILS') ?? '').split(',').map(e => e.trim())
+      if (!user.email || !devEmails.includes(user.email)) {
+        delete (action as Record<string, unknown>).forceCardRank
+      }
+    }
+
     const currentState = mapRowToGameState(row)
     const newState = applyAction(currentState, user.id, action)
 
