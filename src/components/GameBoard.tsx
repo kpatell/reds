@@ -273,50 +273,91 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                 {/* Drawn Card (Center - absolute overlay) */}
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-auto">
                 {gameState.drawnCard && currentPlayer && !isPeekPhase && (
-                    <motion.div
-                        className="flex flex-col items-center gap-2"
-                        initial={{ x: -150, scale: 0.5, opacity: 0 }}
-                        animate={{ x: 0, scale: 1, opacity: 1 }}
-                        transition={{ type: 'spring', stiffness: 150, damping: 20 }}
-                    >
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-background)]/80 px-2 py-1 rounded-md backdrop-blur-sm shadow-sm">
-                            {isMyTurn ? "Current Draw" : "Opponent Drew"}
-                        </span>
-                        <div className="flex flex-col items-center gap-2 bg-[var(--color-surface)]/90 p-2 rounded-xl backdrop-blur-sm border border-[var(--color-border)] shadow-2xl ring-1 ring-black/5">
-                            <motion.div
-                                initial={{ rotateY: 180 }}
-                                animate={{ rotateY: 0 }}
-                                transition={{ duration: 0.6 }}
+                    gameState.drawnCardSource === 'discard' ? (
+                        // Discard path: Card flies in at full opacity via layoutId.
+                        // Background, label, and button fade in independently so they
+                        // never parent-opacity the flying card.
+                        <div className="flex flex-col items-center gap-2">
+                            <motion.span
+                                className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-background)]/80 px-2 py-1 rounded-md backdrop-blur-sm shadow-sm"
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                transition={{ duration: 0.4 }}
                             >
-                                <Card
-                                    card={{ ...gameState.drawnCard, isFaceUp: showDrawnCard }}
-                                    className="shadow-md"
+                                {isMyTurn ? "Current Draw" : "Opponent Drew"}
+                            </motion.span>
+                            <div className="relative flex flex-col items-center gap-2 p-2 rounded-xl">
+                                <motion.div
+                                    className="absolute inset-0 bg-[var(--color-surface)]/90 backdrop-blur-sm border border-[var(--color-border)] shadow-2xl ring-1 ring-black/5 rounded-xl"
+                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                    transition={{ duration: 0.4 }}
                                 />
-                            </motion.div>
-
-                            {/* Power Hint — hidden on mobile to prevent off-screen overflow */}
-                            {isMyTurn && gameState.drawnCard && gameState.drawnCardSource === 'deck' && ['7', '8', '9', '10'].includes(gameState.drawnCard.rank) && (
-                                <div className="hidden sm:block absolute -right-32 top-1/2 -translate-y-1/2 w-28 bg-black/75 text-white text-[10px] p-2 rounded-lg backdrop-blur-sm pointer-events-none animate-in fade-in slide-in-from-left-2">
-                                    <p className="font-bold mb-1 text-yellow-400">Power Card!</p>
-                                    {gameState.drawnCard.rank === '7' && "Discard to PEEK at one of your own cards."}
-                                    {gameState.drawnCard.rank === '8' && "Discard to PEEK at an opponent's card."}
-                                    {gameState.drawnCard.rank === '9' && "Blind Swap: Swap any one of your cards with an opponent's card without looking."}
-                                    {gameState.drawnCard.rank === '10' && "Look & Swap: See one of your cards and one opponent card, then decide if you want to swap."}
-                                </div>
-                            )}
-
-                            {isMyTurn && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase && (
-                                <div className="flex flex-col gap-1 w-full">
-                                    <button
-                                        onClick={() => onDiscard?.()}
-                                        className="bg-red-100 text-red-700 px-2 py-1.5 rounded-md hover:bg-red-200 focus-visible:ring-2 focus-visible:ring-red-400 transition-colors font-bold text-[10px] w-full uppercase tracking-wide"
+                                <Card
+                                    card={{ ...gameState.drawnCard, isFaceUp: true }}
+                                    className="shadow-md relative z-10"
+                                />
+                                {isMyTurn && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase && (
+                                    <motion.div
+                                        className="flex flex-col gap-1 w-full relative z-10"
+                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                        transition={{ duration: 0.4 }}
                                     >
-                                        Discard
-                                    </button>
-                                </div>
-                            )}
+                                        <button
+                                            onClick={() => onDiscard?.()}
+                                            className="bg-red-100 text-red-700 px-2 py-1.5 rounded-md hover:bg-red-200 focus-visible:ring-2 focus-visible:ring-red-400 transition-colors font-bold text-[10px] w-full uppercase tracking-wide"
+                                        >
+                                            Discard
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </div>
                         </div>
-                    </motion.div>
+                    ) : (
+                        // Deck path: whole container flies in from the left.
+                        <motion.div
+                            className="flex flex-col items-center gap-2"
+                            initial={{ x: -150, scale: 0.5, opacity: 0 }}
+                            animate={{ x: 0, scale: 1, opacity: 1 }}
+                            transition={{ type: 'spring', stiffness: 150, damping: 20 }}
+                        >
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-background)]/80 px-2 py-1 rounded-md backdrop-blur-sm shadow-sm">
+                                {isMyTurn ? "Current Draw" : "Opponent Drew"}
+                            </span>
+                            <div className="flex flex-col items-center gap-2 bg-[var(--color-surface)]/90 p-2 rounded-xl backdrop-blur-sm border border-[var(--color-border)] shadow-2xl ring-1 ring-black/5">
+                                <motion.div
+                                    initial={{ rotateY: 180 }}
+                                    animate={{ rotateY: 0 }}
+                                    transition={{ duration: 0.6 }}
+                                >
+                                    <Card
+                                        card={{ ...gameState.drawnCard, isFaceUp: showDrawnCard }}
+                                        className="shadow-md"
+                                    />
+                                </motion.div>
+
+                                {/* Power Hint — hidden on mobile to prevent off-screen overflow */}
+                                {isMyTurn && gameState.drawnCard && ['7', '8', '9', '10'].includes(gameState.drawnCard.rank) && (
+                                    <div className="hidden sm:block absolute -right-32 top-1/2 -translate-y-1/2 w-28 bg-black/75 text-white text-[10px] p-2 rounded-lg backdrop-blur-sm pointer-events-none animate-in fade-in slide-in-from-left-2">
+                                        <p className="font-bold mb-1 text-yellow-400">Power Card!</p>
+                                        {gameState.drawnCard.rank === '7' && "Discard to PEEK at one of your own cards."}
+                                        {gameState.drawnCard.rank === '8' && "Discard to PEEK at an opponent's card."}
+                                        {gameState.drawnCard.rank === '9' && "Blind Swap: Swap any one of your cards with an opponent's card without looking."}
+                                        {gameState.drawnCard.rank === '10' && "Look & Swap: See one of your cards and one opponent card, then decide if you want to swap."}
+                                    </div>
+                                )}
+
+                                {isMyTurn && !isPowerPeekSelfPhase && !isPowerPeekOpponentPhase && !isPowerPeekViewingPhase && !isPowerBlindSwapPhase && !isPowerLookSwapPhase && !isPowerLookSwapDecisionPhase && (
+                                    <div className="flex flex-col gap-1 w-full">
+                                        <button
+                                            onClick={() => onDiscard?.()}
+                                            className="bg-red-100 text-red-700 px-2 py-1.5 rounded-md hover:bg-red-200 focus-visible:ring-2 focus-visible:ring-red-400 transition-colors font-bold text-[10px] w-full uppercase tracking-wide"
+                                        >
+                                            Discard
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    )
                 )}
                 </div>
 

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { motion } from 'framer-motion'
@@ -23,26 +23,35 @@ interface CardProps {
     isSelected?: boolean
     className?: string
     isDebug?: boolean
-
     size?: 'sm' | 'default'
+    /** Disable shared layout animation — use when the card is being animated by
+     *  a parent (e.g. the drawn-card overlay) to avoid conflicting FLIP transforms. */
+    noLayoutAnimation?: boolean
 }
 
-export function Card({ card, onClick, onDoubleClick, isSelected, className, isDebug, size = 'default' }: CardProps) {
+export function Card({ card, onClick, onDoubleClick, isSelected, className, isDebug, size = 'default', noLayoutAnimation = false }: CardProps) {
     const isRed = card.suit === 'hearts' || card.suit === 'diamonds'
     const sm = size === 'sm'
 
+    // Disable transform-style-3d while a layout animation (FLIP) is running.
+    // Framer Motion's FLIP applies ancestor transforms that break CSS preserve-3d,
+    // causing the card back face to bleed through (gray-out artifact).
+    const [layoutAnimating, setLayoutAnimating] = useState(false)
+
     return (
         <motion.div
-            layoutId={card.id}
-            layout
+            layoutId={noLayoutAnimation ? undefined : card.id}
+            layout={!noLayoutAnimation}
             onClick={onClick}
             onDoubleClick={onDoubleClick}
             whileHover={{ y: -4 }}
             animate={{ scale: isSelected ? 1.05 : 1 }}
-            transition={{ layout: { type: 'spring', stiffness: 120, damping: 25, duration: 0.6 } }}
+            transition={{ layout: { type: 'spring', stiffness: 120, damping: 25, duration: 0.6 }, opacity: { duration: 0 } }}
+            onLayoutAnimationStart={() => setLayoutAnimating(true)}
+            onLayoutAnimationComplete={() => setLayoutAnimating(false)}
             style={{ containerType: 'inline-size' }}
             className={cn(
-                "relative perspective-1000 cursor-pointer",
+                "relative perspective-1000 cursor-pointer !opacity-100",
                 sm ? "w-16 h-24" : "h-[var(--card-h)] aspect-[2/3]",
                 isSelected && "ring-4 ring-[var(--color-primary)] rounded-xl z-10",
                 className
@@ -51,7 +60,8 @@ export function Card({ card, onClick, onDoubleClick, isSelected, className, isDe
             <div className="w-full h-full" style={{ fontSize: 'max(7px, 11cqw)' }}>
                 <div
                     className={cn(
-                        "w-full h-full transition-all duration-500 transform-style-3d shadow-md rounded-xl border border-[var(--color-border)]",
+                        "w-full h-full transition-all duration-500 shadow-md rounded-xl border border-[var(--color-border)]",
+                        !layoutAnimating && "transform-style-3d",
                         card.isFaceUp ? "rotate-y-0" : "rotate-y-180 bg-[var(--color-primary)]"
                     )}
                 >
