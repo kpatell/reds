@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase'
 
 
 type PlayTurnAction =
-  | { type: 'draw'; source: 'deck' | 'discard' }
+  | { type: 'draw'; source: 'deck' | 'discard'; forceCardRank?: string }
   | { type: 'discard' }
   | { type: 'swap'; cardId: string }
   | { type: 'ready' }
@@ -311,10 +311,10 @@ export default function Game() {
         }
     }
 
-    const handleDraw = async (source: 'deck' | 'discard') => {
+    const handleDraw = async (source: 'deck' | 'discard', forceRank?: string) => {
         try {
             playDraw()
-            await invokeTurn({ type: 'draw', source })
+            await invokeTurn({ type: 'draw', source, ...(forceRank ? { forceCardRank: forceRank } : {}) })
         } catch (err: unknown) {
             playError()
             console.error('Move failed:', err instanceof Error ? err.message : err)

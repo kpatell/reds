@@ -15,7 +15,7 @@ interface RevealState {
 
 interface GameBoardProps {
     gameState: GameState
-    onDraw?: (source: 'deck' | 'discard') => void
+    onDraw?: (source: 'deck' | 'discard', forceRank?: string) => void
     onDiscard?: () => void
     onSwap?: (cardId: string) => void
     onReady?: () => void
@@ -246,7 +246,15 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                 {/* Draw Pile (Left) */}
                 <div className="flex flex-col items-center gap-1.5">
                 <div
-                    onClick={() => canDraw && onDraw?.('deck')}
+                    onClick={() => {
+                        if (!canDraw) return
+                        if (isDebugMode) {
+                            const input = window.prompt('Force draw rank (2-10, J, Q, K, A, Joker) — leave blank for normal draw:')
+                            onDraw?.('deck', input?.trim() || undefined)
+                        } else {
+                            onDraw?.('deck')
+                        }
+                    }}
                     className={cn(
                         "relative group transition-transform origin-bottom pointer-events-auto",
                         canDraw ? "cursor-pointer hover:scale-105" : "cursor-not-allowed opacity-80"

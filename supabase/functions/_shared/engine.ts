@@ -1,7 +1,7 @@
 import type { GameState, PlayerState, Card } from './types.ts'
 
 export type PlayTurnAction =
-  | { type: 'draw'; source: 'deck' | 'discard' }
+  | { type: 'draw'; source: 'deck' | 'discard'; forceCardRank?: string }
   | { type: 'discard' }
   | { type: 'swap'; cardId: string }
   | { type: 'ready' }
@@ -12,7 +12,7 @@ export type PlayTurnAction =
 
 export function applyAction(state: GameState, playerId: string, action: PlayTurnAction): GameState {
   switch (action.type) {
-    case 'draw': return drawCard(state, playerId, action.source)
+    case 'draw': return drawCard(state, playerId, action)
     case 'discard': return discardDrawnCard(state, playerId)
     case 'swap': return swapCard(state, playerId, action.cardId)
     case 'ready': return setPlayerReady(state, playerId)
@@ -58,15 +58,21 @@ export function setPlayerReady(state: GameState, playerId: string): GameState {
   return newState
 }
 
-export function drawCard(state: GameState, playerId: string, source: 'deck' | 'discard'): GameState {
+export function drawCard(state: GameState, playerId: string, action: { source: 'deck' | 'discard'; forceCardRank?: string }): GameState {
   if (!isValidMove(state, playerId)) throw new Error('Not your turn')
   if (state.turnPhase !== 'draw') throw new Error('Invalid phase')
 
+  const { source, forceCardRank } = action
   const newState = structuredClone(state)
   let card: Card | undefined
 
   if (source === 'deck') {
-    card = newState.deck.pop()
+    if (forceCardRank) {
+      const idx = newState.deck.findIndex((c: Card) => c.rank === forceCardRank)
+      card = idx !== -1 ? newState.deck.splice(idx, 1)[0] : newState.deck.pop()
+    } else {
+      card = newState.deck.pop()
+    }
 
     if (newState.deck.length === 0 && newState.discardPile.length > 0) {
       const topDiscard = newState.discardPile.pop()
