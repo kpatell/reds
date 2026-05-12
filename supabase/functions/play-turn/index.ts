@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
 
     return json({ success: true })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Internal error'
+    console.error("PLAY-TURN ERROR:", err); const message = err instanceof Error ? err.message : 'Internal error'
     return json({ error: message }, 400)
   }
 })

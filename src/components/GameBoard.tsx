@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import { useAuth } from '@/components/AuthProvider'
 import { Card } from '@/components/Card'
@@ -37,6 +38,7 @@ interface GameBoardProps {
 
 export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onResolvePower, onFinishPeek, onPowerLookSwapDecision, onSkipPower, onStack, onTransfer, onCallReds, highlightedCardIds, isDebugMode = false, revealState, onSendEmote, opponentActiveEmote, localEmote, isProcessing = false }: GameBoardProps) {
     const { user, profile } = useAuth()
+    const [showDevDrawPicker, setShowDevDrawPicker] = useState(false)
 
     if (!user) {
         if (import.meta.env.DEV) console.warn('GameBoard: No user found, rendering null')
@@ -72,6 +74,9 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
     // Define where the "Viewing" focus is
     const viewingOwnCard = isPowerPeekViewingPhase && !!currentPlayer?.viewingCardId && currentPlayer.hand.some(c => c && c.id === currentPlayer.viewingCardId)
     const viewingOpponentCard = isPowerPeekViewingPhase && !!currentPlayer?.viewingCardId && !viewingOwnCard
+
+    const myCardCount = currentPlayer?.hand.filter(c => c !== null).length ?? 0
+    const opponentCardCount = opponent?.hand.filter(c => c !== null).length ?? 0
 
     const isStackTransferPhase = !!gameState.pendingStackTransfer
     const amITransferring = isStackTransferPhase && gameState.pendingStackTransfer?.playerId === currentPlayer?.id
@@ -249,8 +254,7 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                     onClick={() => {
                         if (!canDraw) return
                         if (isDebugMode) {
-                            const input = window.prompt('Force draw rank (2-10, J, Q, K, A, Joker) — leave blank for normal draw:')
-                            onDraw?.('deck', input?.trim() || undefined)
+                            setShowDevDrawPicker(true)
                         } else {
                             onDraw?.('deck')
                         }
@@ -334,8 +338,12 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                                     />
                                 </motion.div>
 
-                                {/* Power Hint — hidden on mobile to prevent off-screen overflow */}
-                                {isMyTurn && gameState.drawnCard && ['7', '8', '9', '10'].includes(gameState.drawnCard.rank) && (
+                                {/* Power Hint — hidden on mobile, and hidden when the power would be skipped due to empty hands */}
+                                {isMyTurn && gameState.drawnCard && (
+                                    (gameState.drawnCard.rank === '7' && myCardCount > 0) ||
+                                    (gameState.drawnCard.rank === '8' && opponentCardCount > 0) ||
+                                    (['9', '10'].includes(gameState.drawnCard.rank) && myCardCount > 0 && opponentCardCount > 0)
+                                ) && (
                                     <div className="hidden sm:block absolute -right-32 top-1/2 -translate-y-1/2 w-28 bg-black/75 text-white text-[10px] p-2 rounded-lg backdrop-blur-sm pointer-events-none animate-in fade-in slide-in-from-left-2">
                                         <p className="font-bold mb-1 text-yellow-400">Power Card!</p>
                                         {gameState.drawnCard.rank === '7' && "Discard to PEEK at one of your own cards."}
@@ -470,6 +478,53 @@ export function GameBoard({ gameState, onDraw, onDiscard, onSwap, onReady, onRes
                 )}
             </div>
         </div>
+        {/* Dev Draw Picker — only rendered in debug mode */}
+        <AnimatePresence>
+        {isDebugMode && showDevDrawPicker && (
+            <motion.div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setShowDevDrawPicker(false)}
+            >
+                <motion.div
+                    className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 shadow-2xl w-72 mx-4"
+                    initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-bold text-[var(--color-text-main)] uppercase tracking-wider">Force Draw</h3>
+                        <span className="text-[10px] px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-bold uppercase tracking-wider">Dev</span>
+                    </div>
+
+                    {/* Rank grid — 7 columns, 2 rows */}
+                    <div className="grid grid-cols-7 gap-1.5 mb-3">
+                        {(['A','2','3','4','5','6','7','8','9','10','J','Q','K','Joker'] as const).map(rank => (
+                            <button
+                                key={rank}
+                                onClick={() => { onDraw?.('deck', rank); setShowDevDrawPicker(false) }}
+                                className={cn(
+                                    'py-2 rounded-lg border text-xs font-bold transition-colors',
+                                    rank === 'Joker'
+                                        ? 'col-span-2 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-600 hover:text-white hover:border-purple-600'
+                                        : 'bg-[var(--color-background)] border-[var(--color-border)] text-[var(--color-text-main)] hover:bg-[var(--color-primary)] hover:text-white hover:border-[var(--color-primary)]'
+                                )}
+                            >
+                                {rank}
+                            </button>
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={() => { onDraw?.('deck'); setShowDevDrawPicker(false) }}
+                        className="w-full py-2 rounded-lg border border-[var(--color-border)] text-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                    >
+                        Normal Draw
+                    </button>
+                </motion.div>
+            </motion.div>
+        )}
+        </AnimatePresence>
         </LayoutGroup>
     )
 }

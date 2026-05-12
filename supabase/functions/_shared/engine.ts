@@ -68,7 +68,8 @@ export function drawCard(state: GameState, playerId: string, action: { source: '
 
   if (source === 'deck') {
     if (forceCardRank) {
-      const idx = newState.deck.findIndex((c: Card) => c.rank === forceCardRank)
+      const needle = forceCardRank.trim().toLowerCase()
+      const idx = newState.deck.findIndex((c: Card) => c.rank.toLowerCase() === needle)
       card = idx !== -1 ? newState.deck.splice(idx, 1)[0] : newState.deck.pop()
     } else {
       card = newState.deck.pop()
@@ -124,25 +125,31 @@ export function discardDrawnCard(state: GameState, playerId: string): GameState 
   newState.drawnCardSource = null
 
   if (source === 'deck') {
-    if (card.rank === '7') {
+    const opponentId = Object.keys(newState.players).find(id => id !== playerId)
+    const playerHasCards = newState.players[playerId].hand.some((c: Card | null) => c !== null)
+    const opponentHasCards = opponentId
+      ? newState.players[opponentId].hand.some((c: Card | null) => c !== null)
+      : false
+
+    if (card.rank === '7' && playerHasCards) {
       newState.turnPhase = 'power_peek_self'
       newState.lastGameAction = null
       newState.lastActionAt = new Date().toISOString()
       return newState
     }
-    if (card.rank === '8') {
+    if (card.rank === '8' && opponentHasCards) {
       newState.turnPhase = 'power_peek_opponent'
       newState.lastGameAction = null
       newState.lastActionAt = new Date().toISOString()
       return newState
     }
-    if (card.rank === '9') {
+    if (card.rank === '9' && playerHasCards && opponentHasCards) {
       newState.turnPhase = 'power_blind_swap'
       newState.lastGameAction = null
       newState.lastActionAt = new Date().toISOString()
       return newState
     }
-    if (card.rank === '10') {
+    if (card.rank === '10' && playerHasCards && opponentHasCards) {
       newState.turnPhase = 'power_look_swap'
       newState.lastGameAction = null
       newState.lastActionAt = new Date().toISOString()
@@ -446,10 +453,26 @@ function endTurn(state: GameState): GameState {
   const playerIds = Object.keys(state.players).sort()
   const currentIndex = playerIds.indexOf(state.currentTurnPlayerId!)
   const nextIndex = (currentIndex + 1) % playerIds.length
+  const nextPlayerId = playerIds[nextIndex]
+  const nextPlayer = state.players[nextPlayerId]
 
-  state.currentTurnPlayerId = playerIds[nextIndex]
+  state.currentTurnPlayerId = nextPlayerId
   state.turnPhase = 'draw'
   state.lastActionAt = new Date().toISOString()
+
+  // If the next player has no cards remaining, auto-call REDS on their behalf
+  // so they are never stuck with a turn they literally cannot play.
+  if (!nextPlayer.hand.some((c: Card | null) => c !== null)) {
+    const afterNextIndex = (nextIndex + 1) % playerIds.length
+    state.status = 'final_turn'
+    state.callerId = nextPlayerId
+    state.currentTurnPlayerId = playerIds[afterNextIndex]
+    state.lastGameAction = {
+      playerId: nextPlayerId,
+      actionType: 'call_reds',
+      description: `${nextPlayer.username} has no cards — REDS called automatically!`,
+    }
+  }
 
   return state
 }
