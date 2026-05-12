@@ -37,7 +37,7 @@ export type TurnPhase =
 
 export interface GameState {
   id: string
-  status: 'waiting' | 'playing' | 'final_turn' | 'reveal_pending' | 'finished'
+  status: 'waiting' | 'playing' | 'final_turn' | 'reveal_pending' | 'finished' | 'abandoned'
   deck: Deck
   discardPile: Deck
   players: Record<string, PlayerState>
