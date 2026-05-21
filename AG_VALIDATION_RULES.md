@@ -71,7 +71,15 @@
 - **Client-Side Validation Only:** Never trust the client. The DB RPC function must re-validate that the move is legal before mutating data.
 
 ## 8. Git & Testing
-- **Conventional Commits:** Required.
+- **Conventional Commits:** Required. Format: `type(scope): description`
+    - Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `style`
+    - Examples: `feat(game): add blind swap power resolution`, `fix(lobby): filter stale games`
+- **Branching Strategy:**
+    - `main` is protected — direct pushes are forbidden.
+    - All work must be done on a feature branch cut from `main`.
+    - Branch naming: `feat/<short-description>`, `fix/<short-description>`, `docs/<short-description>`, `chore/<short-description>`.
+    - Open a Pull Request to merge into `main`. Squash-merge preferred to keep history clean.
+    - Delete the branch after the PR is merged.
 - **Unit Tests:** All logic in `src/features/game/logic/` must have 100% coverage via Vitest.
 
 ## 9. UI/UX & Design System
